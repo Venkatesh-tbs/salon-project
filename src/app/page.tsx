@@ -1,11 +1,12 @@
 "use client";
 
-import { useCallback, useRef } from "react";
+import { useState, useCallback, useRef } from "react";
 import dynamic from "next/dynamic";
 import HeroCanvas from "@/components/HeroCanvas";
 import { CursorGlow } from "@/components/ui/cursor-glow";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import Link from 'next/link';
+import { Menu, X } from 'lucide-react';
 
 // Dynamic imports for improved performance
 const ServicesGrid = dynamic(() => import("@/components/ui/services-grid").then(mod => mod.ServicesGrid), {
@@ -38,11 +39,20 @@ const Section: React.FC<{ children: React.ReactNode; className?: string; id?: st
 );
 
 export default function Home() {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const bookingRef = useRef<HTMLDivElement>(null);
 
   const scrollToBooking = useCallback(() => {
+    setIsMenuOpen(false);
     bookingRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, []);
+
+  const navLinks = [
+    { name: 'Services', href: '#services' },
+    { name: 'Gallery', href: '#gallery' },
+    { name: 'About', href: '#about' }, // Assuming these sections exist or will be added
+    { name: 'Contact', href: '#contact' },
+  ];
 
   return (
     <div className="relative min-h-screen bg-[#07050f] text-white selection:bg-fuchsia-500/30 selection:text-white overflow-x-hidden">
@@ -57,14 +67,14 @@ export default function Home() {
         initial={{ y: -20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-        className="fixed top-0 inset-x-0 z-50 px-6 py-4 flex items-center justify-between"
+        className="fixed top-0 inset-x-0 z-[60] px-6 py-4 flex items-center justify-between"
         style={{
-          background: "linear-gradient(to bottom, rgba(7,5,15,0.95), transparent)",
+          background: isMenuOpen ? "rgba(7,5,15,0.98)" : "linear-gradient(to bottom, rgba(7,5,15,0.95), transparent)",
           backdropFilter: "blur(12px)",
-          borderBottom: "1px solid rgba(255,255,255,0.04)",
+          borderBottom: isMenuOpen ? "1px solid rgba(255,255,255,0.1)" : "1px solid rgba(255,255,255,0.04)",
         }}
       >
-        <Link href="/" className="group flex items-center gap-2">
+        <Link href="/" className="group flex items-center gap-2 relative z-[70]">
            <span
              className="text-xl font-black tracking-tight text-white font-syne"
            >
@@ -72,10 +82,11 @@ export default function Home() {
            </span>
         </Link>
         
+        {/* Desktop Menu */}
         <div className="hidden md:flex items-center gap-10 text-sm font-semibold text-white/50">
-          {['Services', 'Gallery', 'About', 'Contact'].map((item) => (
-            <a key={item} href={`#${item.toLowerCase()}`} className="hover:text-white transition-all transform hover:scale-105">
-              {item}
+          {navLinks.map((item) => (
+            <a key={item.name} href={item.href} className="hover:text-white transition-all transform hover:scale-105">
+              {item.name}
             </a>
           ))}
           <Link href="/admin" className="px-5 py-2 rounded-xl border border-white/10 hover:border-fuchsia-500/40 hover:bg-fuchsia-500/10 transition-all font-syne">
@@ -91,6 +102,80 @@ export default function Home() {
             Book Now
           </button>
         </div>
+
+        {/* Mobile Hamburger Toggle */}
+        <button
+          onClick={() => setIsMenuOpen(!isMenuOpen)}
+          className="md:hidden relative z-[70] p-2 text-white/70 hover:text-white transition-colors"
+        >
+          {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+        </button>
+
+        {/* Mobile menu overlay */}
+        <AnimatePresence>
+          {isMenuOpen && (
+            <motion.div
+              initial={{ opacity: 0, x: '100%' }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="fixed inset-0 z-[50] bg-[#07050f]/98 backdrop-blur-2xl md:hidden overflow-y-auto"
+            >
+              <div className="flex flex-col items-center justify-center min-h-screen gap-8 p-10 pt-24 text-center">
+                <div className="w-full flex flex-col gap-6">
+                  {navLinks.map((item, i) => (
+                    <motion.a
+                      key={item.name}
+                      href={item.href}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.1 + i * 0.05 }}
+                      onClick={() => setIsMenuOpen(false)}
+                      className="text-2xl font-bold font-syne text-white/50 hover:text-white transition-all"
+                    >
+                      {item.name}
+                    </motion.a>
+                  ))}
+                  
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.3 }}
+                    className="pt-6 border-t border-white/10 flex flex-col gap-4"
+                  >
+                    <Link
+                      href="/admin"
+                      onClick={() => setIsMenuOpen(false)}
+                      className="text-2xl font-bold font-syne text-white/50 hover:text-white transition-all"
+                    >
+                      Admin
+                    </Link>
+                    
+                    <button
+                      onClick={scrollToBooking}
+                      className="mt-4 px-10 py-5 rounded-2xl text-xl font-bold text-white transition-all shadow-[0_0_30px_rgba(192,38,211,0.2)]"
+                      style={{
+                        background: "linear-gradient(135deg, #c026d3, #7c3aed)",
+                      }}
+                    >
+                      Book Now ✦
+                    </button>
+                  </motion.div>
+                </div>
+                
+                {/* Social icons or secondary links can go here */}
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.5 }}
+                  className="mt-10 text-white/20 text-xs font-bold uppercase tracking-widest"
+                >
+                  ✦ EXPERIENCE PRECEDENCE ✦
+                </motion.div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </motion.nav>
 
       <main>
