@@ -497,13 +497,13 @@ export function AppointmentForm({ initialData, onSuccess }: AppointmentFormProps
             </h3>
             <p className="text-white/50">We'll confirm your appointment via WhatsApp shortly.</p>
             {lastBooking && (() => {
+              const SALON_WHATSAPP = "916383454256";
               const msg = encodeURIComponent(
                 `Hello Salon Luxé 👋\n\nI’ve just booked an appointment on your website.\n\n👤 Name: ${lastBooking.name}\n💇 Service: ${lastBooking.service}\n📅 Date: ${lastBooking.date}\n⏰ Time: ${lastBooking.time}\n\nCould you please confirm my booking?\n\nThank you! ✂`
               );
-              const waPhone = formatPhoneNumber(lastBooking.phone).replace('+', '');
               return (
                 <a
-                  href={`https://wa.me/${waPhone}?text=${msg}`}
+                  href={`https://wa.me/${SALON_WHATSAPP}?text=${msg}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center gap-2 mt-2 px-8 py-3 rounded-xl bg-green-500/20 border border-green-500/30 text-green-400 text-sm font-semibold hover:bg-green-500/30 transition-all"
