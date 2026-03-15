@@ -106,87 +106,91 @@ export default function Home() {
         {/* Mobile Hamburger Toggle */}
         <button
           onClick={() => setIsMenuOpen(!isMenuOpen)}
-          className="md:hidden relative z-[100] p-3 text-white bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl flex items-center justify-center transition-all active:scale-90"
+          className="md:hidden relative z-[100] p-3 text-white bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl flex items-center justify-center transition-all active:scale-95 shadow-lg shadow-black/20"
           style={{ width: '48px', height: '48px' }}
           aria-label="Toggle Menu"
         >
           {isMenuOpen ? (
             <X className="w-6 h-6 stroke-[2.5px]" />
           ) : (
-            <div className="flex flex-col gap-1.5 items-center justify-center">
-              <span className={`h-0.5 w-6 bg-white rounded-full transition-all ${isMenuOpen ? 'rotate-45 translate-y-2' : ''}`} />
-              <span className={`h-0.5 w-6 bg-white rounded-full transition-all ${isMenuOpen ? 'opacity-0' : ''}`} />
-              <span className={`h-0.5 w-6 bg-white rounded-full transition-all ${isMenuOpen ? '-rotate-45 -translate-y-2' : ''}`} />
+            <div className="flex flex-col gap-1.5">
+              <span className="h-0.5 w-6 bg-white rounded-full" />
+              <span className="h-0.5 w-6 bg-white rounded-full" />
+              <span className="h-0.5 w-6 bg-white rounded-full" />
             </div>
           )}
         </button>
+      </motion.nav>
 
-        {/* Mobile menu overlay */}
-        <AnimatePresence>
-          {isMenuOpen && (
-            <motion.div
-              initial={{ opacity: 0, x: '100%' }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: '100%' }}
-              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="fixed inset-0 z-[50] bg-[#07050f]/98 backdrop-blur-2xl md:hidden overflow-y-auto"
-            >
-              <div className="flex flex-col items-center justify-center min-h-screen gap-8 p-10 pt-24 text-center">
-                <div className="w-full flex flex-col gap-6">
-                  {navLinks.map((item, i) => (
-                    <motion.a
-                      key={item.name}
-                      href={item.href}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.1 + i * 0.05 }}
-                      onClick={() => setIsMenuOpen(false)}
-                      className="text-2xl font-bold font-syne text-white/50 hover:text-white transition-all"
-                    >
-                      {item.name}
-                    </motion.a>
-                  ))}
-                  
-                  <motion.div
+      {/* Mobile menu overlay — Moved to root to avoid transform container clipping */}
+      <AnimatePresence>
+        {isMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[80] bg-[#07050f] md:hidden overflow-y-auto"
+          >
+            {/* Ambient Background for Menu */}
+            <div className="absolute inset-0 overflow-hidden pointer-events-none">
+              <div className="absolute top-[-10%] right-[-10%] w-[80%] h-[50%] bg-fuchsia-600/20 blur-[120px] rounded-full" />
+              <div className="absolute bottom-[-10%] left-[-10%] w-[80%] h-[50%] bg-indigo-600/10 blur-[120px] rounded-full" />
+            </div>
+
+            <div className="relative flex flex-col items-center justify-center min-h-screen gap-10 p-10 pt-32 text-center">
+              <div className="w-full flex flex-col gap-8">
+                {navLinks.map((item, i) => (
+                  <motion.a
+                    key={item.name}
+                    href={item.href}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.3 }}
-                    className="pt-6 border-t border-white/10 flex flex-col gap-4"
+                    transition={{ delay: 0.05 * i }}
+                    onClick={() => setIsMenuOpen(false)}
+                    className="text-4xl font-black font-syne text-white tracking-tight hover:text-fuchsia-400 transition-colors uppercase"
                   >
-                    <Link
-                      href="/admin"
-                      onClick={() => setIsMenuOpen(false)}
-                      className="text-2xl font-bold font-syne text-white/50 hover:text-white transition-all"
-                    >
-                      Admin
-                    </Link>
-                    
-                    <button
-                      onClick={scrollToBooking}
-                      className="mt-4 px-10 py-5 rounded-2xl text-xl font-bold text-white transition-all shadow-[0_0_30px_rgba(192,38,211,0.2)]"
-                      style={{
-                        background: "linear-gradient(135deg, #c026d3, #7c3aed)",
-                      }}
-                    >
-                      Book Now ✦
-                    </button>
-                  </motion.div>
-                </div>
+                    {item.name}
+                  </motion.a>
+                ))}
                 
-                {/* Social icons or secondary links can go here */}
                 <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.5 }}
-                  className="mt-10 text-white/20 text-xs font-bold uppercase tracking-widest"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.25 }}
+                  className="pt-10 border-t border-white/5 flex flex-col gap-6"
                 >
-                  ✦ EXPERIENCE PRECEDENCE ✦
+                  <Link
+                    href="/admin"
+                    onClick={() => setIsMenuOpen(false)}
+                    className="text-3xl font-black font-syne text-white/50 hover:text-white transition-all uppercase"
+                  >
+                    Admin
+                  </Link>
+                  
+                  <button
+                    onClick={scrollToBooking}
+                    className="mt-4 px-10 py-6 rounded-3xl text-2xl font-black text-white transition-all active:scale-95 shadow-[0_20px_50px_rgba(192,38,211,0.3)] font-syne uppercase tracking-wider"
+                    style={{
+                      background: "linear-gradient(135deg, #c026d3, #7c3aed)",
+                    }}
+                  >
+                    Book Now ✦
+                  </button>
                 </motion.div>
               </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </motion.nav>
+              
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.5 }}
+                className="mt-12 text-white/20 text-[10px] font-black uppercase tracking-[0.5em]"
+              >
+                ✦ EXPERIENCE LUXÉ ✦
+              </motion.div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <main>
         {/* ── Hero Section ── */}
