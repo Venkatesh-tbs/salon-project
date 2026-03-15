@@ -497,9 +497,9 @@ export function AppointmentForm({ initialData, onSuccess }: AppointmentFormProps
             </h3>
             <p className="text-white/50">We'll confirm your appointment via WhatsApp shortly.</p>
             {lastBooking && (() => {
-              const SALON_WHATSAPP = "14155238886";
+              const SALON_WHATSAPP = "916383454256";
               const msg = encodeURIComponent(
-                `join went-high\n\nHello Salon Luxé 👋\n\nI just booked an appointment on your website.\n\n👤 Name: ${lastBooking.name}\n💇 Service: ${lastBooking.service}\n📅 Date: ${lastBooking.date}\n⏰ Time: ${lastBooking.time}\n\nPlease confirm my booking ✂`
+                `Hello Salon Luxé 👋\n\nI’ve just booked an appointment on your website.\n\n👤 Name: ${lastBooking.name}\n💇 Service: ${lastBooking.service}\n📅 Date: ${lastBooking.date}\n⏰ Time: ${lastBooking.time}\n\nLooking forward to the appointment! 🙌\nPlease confirm my booking.\n\nThank you! ✂`
               );
               return (
                 <a
