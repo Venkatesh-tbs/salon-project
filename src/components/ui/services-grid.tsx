@@ -50,13 +50,13 @@ export const ServicesGrid: React.FC<ServicesGridProps> = React.memo(
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-            className="text-center mb-16"
+            className="text-center mb-12"
           >
             <span className="text-fuchsia-400 text-sm font-semibold tracking-widest uppercase mb-3 block">
               Our Expertise
             </span>
             <h2
-              className="text-4xl md:text-6xl font-black text-white tracking-tight"
+              className="text-3xl md:text-6xl font-black text-white tracking-tight px-4"
               style={{ fontFamily: "'Syne', sans-serif" }}
             >
               Signature{" "}
@@ -74,7 +74,7 @@ export const ServicesGrid: React.FC<ServicesGridProps> = React.memo(
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: "-80px" }}
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5"
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 px-4 sm:px-0"
           >
             {services.map((service) => (
               <AnimatedCard key={service.id} glowColor={service.glowColor}>

@@ -1,13 +1,13 @@
 "use client";
 import React, { useEffect, useRef } from "react";
-import { motion, useMotionValue, useTransform, useSpring } from "framer-motion";
+import { motion, useMotionValue, useTransform, useSpring, Variants } from "framer-motion";
 
 
-const stagger = {
+const stagger: Variants = {
   hidden: {},
   visible: { transition: { staggerChildren: 0.12, delayChildren: 0.2 } },
 };
-const fadeUp = {
+const fadeUp: Variants = {
   hidden: { opacity: 0, y: 40 },
   visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease: [0.22, 1, 0.36, 1] } },
 };
@@ -114,7 +114,7 @@ export default function HeroCanvas({ onBookNow }: HeroCanvasProps) {
 
         <motion.h1
           variants={fadeUp}
-          className="text-6xl md:text-8xl font-black tracking-tight leading-none mb-6"
+          className="text-5xl sm:text-7xl md:text-8xl font-black tracking-tight leading-none mb-6"
           style={{ fontFamily: "'Syne', sans-serif" }}
         >
           <span className="block text-white">STYLE</span>
@@ -129,17 +129,17 @@ export default function HeroCanvas({ onBookNow }: HeroCanvasProps) {
 
         <motion.p
           variants={fadeUp}
-          className="text-lg md:text-xl text-white/50 max-w-xl mx-auto mb-10 leading-relaxed"
+          className="text-base sm:text-lg md:text-xl text-white/50 max-w-xl mx-auto mb-10 leading-relaxed px-4"
           style={{ fontFamily: "'DM Sans', sans-serif" }}
         >
           Where artistry meets precision. Elevate your presence with bespoke
           beauty crafted for those who demand the extraordinary.
         </motion.p>
 
-        <motion.div variants={fadeUp} className="flex flex-col sm:flex-row gap-4 justify-center">
+        <motion.div variants={fadeUp} className="flex flex-col sm:flex-row gap-4 justify-center px-4 w-full sm:w-auto">
           <button
             onClick={onBookNow}
-            className="relative group px-8 py-4 rounded-2xl font-semibold text-white overflow-hidden transition-all duration-300 hover:scale-105 active:scale-100"
+            className="relative group px-8 py-4 rounded-2xl font-semibold text-white overflow-hidden transition-all duration-300 hover:scale-[1.03] active:scale-95 w-full sm:w-auto"
             style={{
               background: "linear-gradient(135deg, #c026d3, #7c3aed)",
               boxShadow: "0 0 30px #c026d355",
@@ -152,7 +152,7 @@ export default function HeroCanvas({ onBookNow }: HeroCanvasProps) {
             onClick={() => {
               document.getElementById('services')?.scrollIntoView({ behavior: 'smooth' });
             }}
-            className="px-8 py-4 rounded-2xl font-semibold text-white/70 border border-white/15 hover:border-fuchsia-500/50 hover:text-white transition-all duration-300 hover:scale-105 backdrop-blur-sm"
+            className="px-8 py-4 rounded-2xl font-semibold text-white/70 border border-white/15 hover:border-fuchsia-500/50 hover:text-white transition-all duration-300 hover:scale-[1.03] active:scale-95 backdrop-blur-sm w-full sm:w-auto"
           >
             Explore Services
           </button>

@@ -457,7 +457,7 @@ export function AppointmentForm({ initialData, onSuccess }: AppointmentFormProps
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.9 }}
-            className="text-center py-12 flex flex-col items-center gap-4 bg-white/[0.03] rounded-3xl border border-white/10 p-10"
+            className="text-center py-8 flex flex-col items-center gap-4 bg-white/[0.03] rounded-3xl border border-white/10 p-6 md:p-10"
           >
             <div className="text-6xl animate-bounce">✨</div>
             <h3 className="text-2xl font-bold text-white font-syne">

@@ -33,7 +33,8 @@ function formatPhoneNumber(phone: string): string {
  * In production, trigger this via Vercel Cron or standard polling ping.
  */
 export async function GET() {
-  console.log('[Reminder Cron] Checking upcoming appointments...');
+  console.log('[Reminder] Endpoint triggered');
+  console.log('[Reminder] Checking appointments');
 
   try {
     const dbRef = ref(db);
@@ -81,7 +82,7 @@ export async function GET() {
 
                 if (twilioClient && twilioWhatsApp) {
                   await twilioClient.messages.create({ body: reminderMsg, from: twilioWhatsApp, to: recipient });
-                  console.log(`[Reminder] Reminder sent successfully to ${recipient}`);
+                  console.log('[Reminder] Reminder sent successfully');
                 } else {
                   console.log(`[Reminder] Mock reminder (no credentials) to ${recipient}`);
                 }
@@ -91,13 +92,14 @@ export async function GET() {
               } catch (err: any) {
                 console.error(`[Reminder] Error sending to ${id}:`, err.message);
               }
-            } else if (minutesUntil <= 0 || minutesUntil > 60) {
-              // Only log if it was a candidate (close by) but outside the strict window
-              if (minutesUntil > -120 && minutesUntil < 0) {
-                console.log(`[Reminder] Reminder already sent or expired for ${appt.name} (${minutesUntil} mins)`);
-              }
+            } else if (minutesUntil <= 0) {
+                // Past appointment - skip silently or log for expired
+                console.log(`[Reminder] Skipping past appointment: ${appt.name} at ${appt.time}`);
             }
           }
+        } else if (appt.reminderSent === true) {
+            // Already sent
+            console.log('[Reminder] Reminder skipped (already sent)');
         }
       }
 
@@ -130,9 +132,8 @@ export async function GET() {
 
     return NextResponse.json({
       success: true,
-      remindersSentCount: remindersSent.length,
-      appointmentsReminded: remindersSent,
-      errors: errors.length > 0 ? errors : undefined,
+      checkedAppointments: Object.keys(appointments).length,
+      remindersSent: remindersSent.length
     });
 
   } catch (error: any) {

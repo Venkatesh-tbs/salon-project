@@ -1,13 +1,27 @@
 "use client";
 
 import { useCallback, useRef } from "react";
+import dynamic from "next/dynamic";
 import HeroCanvas from "@/components/HeroCanvas";
-import { ServicesGrid } from "@/components/ui/services-grid";
-import { AppointmentForm } from "@/components/dashboard/appointment-form";
 import { CursorGlow } from "@/components/ui/cursor-glow";
-import { GallerySection } from "@/components/GallerySection";
 import { motion } from "framer-motion";
 import Link from 'next/link';
+
+// Dynamic imports for improved performance
+const ServicesGrid = dynamic(() => import("@/components/ui/services-grid").then(mod => mod.ServicesGrid), {
+  loading: () => <div className="py-20 text-center text-white/20 animate-pulse">Loading Expertise...</div>,
+  ssr: true,
+});
+
+const AppointmentForm = dynamic(() => import("@/components/dashboard/appointment-form").then(mod => mod.AppointmentForm), {
+  loading: () => <div className="h-96 w-full bg-white/5 rounded-3xl animate-pulse" />,
+  ssr: false,
+});
+
+const GallerySection = dynamic(() => import("@/components/GallerySection").then(mod => mod.GallerySection), {
+  loading: () => <div className="py-20 text-center text-white/20 animate-pulse">Loading Gallery...</div>,
+  ssr: true,
+});
 
 /* ── Section Wrapper ──────────────────────────────────────────── */
 const Section: React.FC<{ children: React.ReactNode; className?: string; id?: string }> = ({ children, className = "", id }) => (
@@ -90,8 +104,8 @@ export default function Home() {
 
         {/* ── Stats Strip ── */}
         <Section>
-          <div className="bg-white/[0.02] border-y border-white/[0.06] py-20 px-6">
-            <div className="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-12 text-center">
+          <div className="bg-white/[0.02] border-y border-white/[0.06] py-16 md:py-20 px-4 md:px-6">
+            <div className="max-w-7xl mx-auto grid grid-cols-2 lg:grid-cols-4 gap-8 md:gap-12 text-center">
               {[
                 { value: "12+", label: "Years of Excellence" },
                 { value: "8K+", label: "Happy Clients" },
@@ -100,14 +114,14 @@ export default function Home() {
               ].map((stat) => (
                 <div key={stat.label}>
                   <div
-                    className="text-5xl font-black bg-clip-text text-transparent mb-2 font-syne"
+                    className="text-4xl md:text-5xl font-black bg-clip-text text-transparent mb-2 font-syne"
                     style={{
                       backgroundImage: "linear-gradient(135deg, #e879f9, #818cf8)",
                     }}
                   >
                     {stat.value}
                   </div>
-                  <div className="text-white/40 text-sm font-bold tracking-widest uppercase">{stat.label}</div>
+                  <div className="text-white/40 text-[10px] md:text-sm font-bold tracking-widest uppercase">{stat.label}</div>
                 </div>
               ))}
             </div>
@@ -121,19 +135,19 @@ export default function Home() {
 
         {/* ── Booking Section ── */}
         <div ref={bookingRef} id="booking">
-          <Section className="py-32 px-6">
+          <Section className="py-20 md:py-32 px-4 md:px-6">
             <div className="max-w-3xl mx-auto relative">
               <div className="absolute -inset-10 bg-fuchsia-500/10 blur-[120px] rounded-full pointer-events-none" />
-              <div className="relative text-center mb-16">
+              <div className="relative text-center mb-12 md:mb-16">
                  <span className="text-fuchsia-400 text-sm font-bold tracking-[0.3em] uppercase mb-4 block">
                    Reserve Your Chair
                  </span>
-                 <h2 className="text-5xl md:text-7xl font-black text-white font-syne leading-none mb-6">
-                   BOOK YOUR <br />
+                 <h2 className="text-4xl sm:text-5xl md:text-7xl font-black text-white font-syne leading-tight mb-6 px-4">
+                   BOOK YOUR <br className="hidden sm:block" />
                    <span className="bg-clip-text text-transparent" style={{ backgroundImage: "linear-gradient(90deg, #e879f9, #818cf8)" }}>SESSION</span>
                  </h2>
               </div>
-              <div className="bg-white/[0.03] backdrop-blur-3xl rounded-[2.5rem] border border-white/10 p-8 md:p-16 shadow-2xl relative">
+              <div className="bg-white/[0.03] backdrop-blur-3xl rounded-[2rem] md:rounded-[2.5rem] border border-white/10 p-6 sm:p-10 md:p-16 shadow-2xl relative">
                 <AppointmentForm />
               </div>
             </div>
@@ -142,17 +156,17 @@ export default function Home() {
       </main>
 
       {/* ── Footer ── */}
-      <footer className="border-t border-white/[0.06] py-20 px-6 bg-[#07050f] text-center">
-        <div className="max-w-7xl mx-auto flex flex-col items-center gap-10">
-          <span className="text-2xl font-black italic tracking-tighter uppercase font-syne">
+      <footer className="border-t border-white/[0.06] py-16 md:py-20 px-6 bg-[#07050f] text-center">
+        <div className="max-w-7xl mx-auto flex flex-col items-center gap-8 md:gap-10">
+          <span className="text-xl md:text-2xl font-black italic tracking-tighter uppercase font-syne">
             ✦ LUXE <span className="text-fuchsia-500">.</span>
           </span>
-          <div className="flex gap-10 text-xs font-bold uppercase tracking-[0.2em] text-white/30">
+          <div className="flex flex-wrap justify-center gap-6 md:gap-10 text-xs font-bold uppercase tracking-[0.2em] text-white/30">
             <a href="#" className="hover:text-white transition-colors">Privacy</a>
             <a href="#" className="hover:text-white transition-colors">Terms</a>
             <a href="#" className="hover:text-white transition-colors">Contact</a>
           </div>
-          <p className="text-[10px] font-black uppercase tracking-[0.4em] text-white/10">
+          <p className="text-[10px] font-black uppercase tracking-[0.4em] text-white/10 px-4">
             &copy; {new Date().getFullYear()} LUXE PREMIUM SALON. ALL RIGHTS RESERVED.
           </p>
         </div>
