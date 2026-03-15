@@ -31,7 +31,6 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
-import { extractAppointmentDetails } from '@/ai/flows/natural-language-appointment-booking';
 import { ref, push } from 'firebase/database';
 import { db } from '@/firebase';
 import { Appointment, Service, subscribeToServices, initDefaultServices } from '@/firebase/db';
@@ -343,28 +342,49 @@ export function AppointmentForm({ initialData, onSuccess }: AppointmentFormProps
     if (!aiRequest.trim()) return;
     setIsAiLoading(true);
     try {
-      const details = await extractAppointmentDetails({
-        request: aiRequest,
-        currentDate: todayStr
+      console.log('[AI Autofill] Sending request:', aiRequest);
+
+      const response = await fetch('/api/ai-autofill', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: aiRequest }),
       });
 
-      if (details.clientName) form.setValue('name', details.clientName);
-      if (details.clientPhone) form.setValue('phone', details.clientPhone);
-      if (details.service && details.service !== 'general service') form.setValue('service', details.service);
-      if (details.date) form.setValue('date', details.date);
-      if (details.time) form.setValue('time', details.time);
-      if (details.additionalNotes) form.setValue('notes', details.additionalNotes);
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+      }
 
-      toast({
-        title: "Magic Applied!",
-        description: "Form populated successfully.",
-      });
-      setAiRequest('');
-    } catch (error) {
+      const details = await response.json();
+      console.log('[AI Autofill] Result:', details);
+
+      if (details.error && !details.name && !details.service) {
+        throw new Error(details.error);
+      }
+
+      let filled = 0;
+      if (details.name) { form.setValue('name', details.name); filled++; }
+      if (details.service) { form.setValue('service', details.service); filled++; }
+      if (details.date) { form.setValue('date', details.date); filled++; }
+      if (details.time) { form.setValue('time', details.time); filled++; }
+
+      if (filled === 0) {
+        toast({
+          title: "Couldn't Detect Details",
+          description: "Try adding a name, service, date and time.",
+        });
+      } else {
+        toast({
+          title: "✨ Form Auto-Filled!",
+          description: `Detected ${filled} field${filled > 1 ? 's' : ''} from your request.`,
+        });
+        setAiRequest('');
+      }
+    } catch (error: any) {
+      console.error('[AI Autofill Error]:', error);
       toast({
         variant: "destructive",
-        title: "AI Failed",
-        description: "Could not process request.",
+        title: "AI Unavailable",
+        description: "AI assistant temporarily unavailable. Please fill the form manually.",
       });
     } finally {
       setIsAiLoading(false);
