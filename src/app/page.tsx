@@ -55,7 +55,7 @@ export default function Home() {
   ];
 
   return (
-    <div className="relative min-h-screen bg-[#07050f] text-white selection:bg-fuchsia-500/30 selection:text-white overflow-x-hidden">
+    <div className="relative min-h-screen bg-[#07050f] text-white selection:bg-fuchsia-500/30 selection:text-white">
       
       {/* cursor reactive glow — desktop only */}
       <div className="hidden md:block">
