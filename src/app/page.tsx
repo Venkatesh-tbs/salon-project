@@ -106,9 +106,19 @@ export default function Home() {
         {/* Mobile Hamburger Toggle */}
         <button
           onClick={() => setIsMenuOpen(!isMenuOpen)}
-          className="md:hidden relative z-[70] p-2 text-white/70 hover:text-white transition-colors"
+          className="md:hidden relative z-[100] p-3 text-white bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl flex items-center justify-center transition-all active:scale-90"
+          style={{ width: '48px', height: '48px' }}
+          aria-label="Toggle Menu"
         >
-          {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          {isMenuOpen ? (
+            <X className="w-6 h-6 stroke-[2.5px]" />
+          ) : (
+            <div className="flex flex-col gap-1.5 items-center justify-center">
+              <span className={`h-0.5 w-6 bg-white rounded-full transition-all ${isMenuOpen ? 'rotate-45 translate-y-2' : ''}`} />
+              <span className={`h-0.5 w-6 bg-white rounded-full transition-all ${isMenuOpen ? 'opacity-0' : ''}`} />
+              <span className={`h-0.5 w-6 bg-white rounded-full transition-all ${isMenuOpen ? '-rotate-45 -translate-y-2' : ''}`} />
+            </div>
+          )}
         </button>
 
         {/* Mobile menu overlay */}
