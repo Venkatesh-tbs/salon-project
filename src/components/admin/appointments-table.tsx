@@ -1,8 +1,9 @@
 'use client';
 
 import { useState } from "react";
-import { Appointment, AppointmentStatus, updateAppointmentStatusRTDB, deleteAppointmentRTDB, upsertClient } from "@/firebase/db";
+import { Appointment, AppointmentStatus, deleteAppointmentRTDB } from "@/firebase/db";
 import { db } from "@/firebase";
+import { ref, update } from "firebase/database";
 import { format } from "date-fns";
 import { 
   Clock, CheckCircle2, XCircle, Trash2, User, Phone, Calendar, Tag, 
@@ -43,20 +44,39 @@ export function AppointmentsTable({ appointments, isLoading = false }: Appointme
   const [loadingId, setLoadingId] = useState<string | null>(null);
 
   const handleStatusChange = async (appointment: Appointment, status: AppointmentStatus) => {
-    if (!appointment.id) return;
-    setLoadingId(appointment.id + status);
+    const apptId = appointment.id;
+    if (!apptId) {
+      toast({ variant: "destructive", title: "Error", description: "Appointment ID is missing." });
+      return;
+    }
+    setLoadingId(apptId + status);
     try {
-      // Call the new API endpoint instead of direct updateAppointmentStatusRTDB
-      // This triggers loyalty points and WhatsApp review requests on completion
-      const response = await fetch(`/api/admin/appointments/${appointment.id}/status`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status }),
-      });
+      // Direct Firebase update — no API route involved, guaranteed to have the correct id
+      const apptRef = ref(db, `appointments/${apptId}`);
+      await update(apptRef, { status, updatedAt: Date.now() });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to update status');
+      // If completing the appointment, also update loyalty points directly
+      if (status === 'completed' && appointment.phone) {
+        const digits = appointment.phone.replace(/[\s\-().]/g, '');
+        let e164 = digits;
+        if (digits.length === 10) e164 = '+91' + digits;
+        else if (digits.startsWith('91') && digits.length === 12) e164 = '+' + digits;
+        else if (!digits.startsWith('+')) e164 = '+' + digits;
+        const phoneId = e164.replace('+', '');
+
+        const { ref: dbRef, get, update: dbUpdate } = await import('firebase/database');
+        const clientRef = dbRef(db, `clients/${phoneId}`);
+        const snap = await get(clientRef);
+        const client = snap.exists() ? snap.val() : { loyaltyPoints: 0, totalVisits: 0, totalSpent: 0 };
+        const price = Number(appointment.servicePrice) || 0;
+        await dbUpdate(clientRef, {
+          name: appointment.name,
+          phone: e164,
+          loyaltyPoints: (client.loyaltyPoints || 0) + (price > 500 ? 10 : 5),
+          totalVisits: (client.totalVisits || 0) + 1,
+          totalSpent: (client.totalSpent || 0) + price,
+          lastVisit: Date.now(),
+        });
       }
 
       toast({ 
