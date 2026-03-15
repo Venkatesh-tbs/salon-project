@@ -55,6 +55,20 @@ export function AppointmentsTable({ appointments, isLoading = false }: Appointme
       const apptRef = ref(db, `appointments/${apptId}`);
       await update(apptRef, { status, updatedAt: Date.now() });
 
+      if (status === 'confirmed') {
+        fetch('/api/send-confirmation', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            phone: appointment.phone,
+            name: appointment.name,
+            service: appointment.service,
+            date: appointment.date,
+            time: appointment.time
+          })
+        }).catch(err => console.error('[Twilio] Confirmation trigger failed', err));
+      }
+
       // If completing the appointment, also update loyalty points directly
       if (status === 'completed' && appointment.phone) {
         const digits = appointment.phone.replace(/[\s\-().]/g, '');
