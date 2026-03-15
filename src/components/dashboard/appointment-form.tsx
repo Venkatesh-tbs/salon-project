@@ -498,7 +498,7 @@ export function AppointmentForm({ initialData, onSuccess }: AppointmentFormProps
             <p className="text-white/50">We'll confirm your appointment via WhatsApp shortly.</p>
             {lastBooking && (() => {
               const msg = encodeURIComponent(
-                `Hello Salon Luxé! 👋\nI just booked an appointment.\n\nName: ${lastBooking.name}\nService: ${lastBooking.service}\nDate: ${lastBooking.date}\nTime: ${lastBooking.time}\n\nPlease confirm. 🙏`
+                `Hello Salon Luxé 👋\n\nI’ve just booked an appointment on your website.\n\n👤 Name: ${lastBooking.name}\n💇 Service: ${lastBooking.service}\n📅 Date: ${lastBooking.date}\n⏰ Time: ${lastBooking.time}\n\nCould you please confirm my booking?\n\nThank you! ✂`
               );
               const waPhone = formatPhoneNumber(lastBooking.phone).replace('+', '');
               return (
