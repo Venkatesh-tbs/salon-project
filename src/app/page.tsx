@@ -89,7 +89,10 @@ export default function Home() {
               {item.name}
             </a>
           ))}
-          <Link href="/admin" className="px-5 py-2 rounded-xl border border-white/10 hover:border-fuchsia-500/40 hover:bg-fuchsia-500/10 transition-all font-syne">
+          <Link href="/staff/login" className="px-5 py-2 rounded-xl border border-white/10 hover:border-blue-500/40 hover:bg-blue-500/10 transition-all font-syne text-white/50 hover:text-white">
+            Staff
+          </Link>
+          <Link href="/admin/login" className="px-5 py-2 rounded-xl border border-white/10 hover:border-fuchsia-500/40 hover:bg-fuchsia-500/10 transition-all font-syne text-white/50 hover:text-white">
             Admin
           </Link>
           <button
@@ -160,7 +163,14 @@ export default function Home() {
                   className="pt-10 border-t border-white/5 flex flex-col gap-6"
                 >
                   <Link
-                    href="/admin"
+                    href="/staff/login"
+                    onClick={() => setIsMenuOpen(false)}
+                    className="text-3xl font-black font-syne text-white/50 hover:text-white transition-all uppercase"
+                  >
+                    Staff
+                  </Link>
+                  <Link
+                    href="/admin/login"
                     onClick={() => setIsMenuOpen(false)}
                     className="text-3xl font-black font-syne text-white/50 hover:text-white transition-all uppercase"
                   >

@@ -1,36 +1,42 @@
+import { getApp, getApps, initializeApp } from 'firebase/app';
 import { getAuth, signInWithEmailAndPassword, signOut } from 'firebase/auth';
-import { initializeFirebase } from './index';
+import { firebaseConfig } from '@/firebase/config';
 
-// Ensures firebase is initialized
-initializeFirebase();
+// Ensure Firebase is initialized
+function getFirebaseAuth() {
+  if (!getApps().length) {
+    initializeApp(firebaseConfig);
+  }
+  return getAuth(getApp());
+}
 
 export async function loginWithEmailFlow(email: string, password: string) {
-    const auth = getAuth();
-    const userCredential = await signInWithEmailAndPassword(auth, email, password);
-    const idToken = await userCredential.user.getIdToken();
+  const auth = getFirebaseAuth();
+  const userCredential = await signInWithEmailAndPassword(auth, email, password);
+  const idToken = await userCredential.user.getIdToken();
 
-    // Call our server route to establish the session cookie
-    const res = await fetch('/api/auth/session', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ idToken }),
-    });
+  // Call our server route to establish the session cookie
+  const res = await fetch('/api/auth/session', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ idToken }),
+  });
 
-    if (!res.ok) {
-        throw new Error('Failed to create session');
-    }
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to create session');
+  }
 
-    return userCredential.user;
+  return userCredential.user;
 }
 
 export async function logoutFlow() {
-    const auth = getAuth();
+  try {
+    const auth = getFirebaseAuth();
     await signOut(auth);
-    
-    // Clear session cookie
-    await fetch('/api/auth/session', {
-        method: 'DELETE',
-    });
+  } catch {
+    // already signed out
+  }
+  // Clear session cookie
+  await fetch('/api/auth/session', { method: 'DELETE' });
 }
