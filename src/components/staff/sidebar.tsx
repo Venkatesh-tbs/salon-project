@@ -5,10 +5,6 @@ import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import {
   LayoutDashboard,
-  CalendarDays,
-  Users,
-  Scissors,
-  BarChart,
   LogOut,
 } from 'lucide-react';
 import { logoutFlow } from '@/firebase/auth/client-flow';
@@ -16,46 +12,26 @@ import { useRouter } from 'next/navigation';
 
 const sidebarItems = [
   {
-    title: 'Dashboard',
-    href: '/admin/dashboard',
+    title: 'My Dashboard',
+    href: '/staff/dashboard',
     icon: LayoutDashboard,
-  },
-  {
-    title: 'Bookings',
-    href: '/admin/bookings',
-    icon: CalendarDays,
-  },
-  {
-    title: 'Services',
-    href: '/admin/services',
-    icon: Scissors,
-  },
-  {
-    title: 'Staff',
-    href: '/admin/staff',
-    icon: Users,
-  },
-  {
-    title: 'Analytics',
-    href: '/admin/analytics',
-    icon: BarChart,
   },
 ];
 
-export function AdminSidebar() {
+export function StaffSidebar() {
   const pathname = usePathname();
   const router = useRouter();
 
   const handleLogout = async () => {
     await logoutFlow();
-    router.push('/admin/login');
+    router.push('/staff/login');
   };
 
   return (
     <div className="flex h-screen w-64 flex-col border-r border-white/10 bg-zinc-950 px-3 py-4">
       <div className="mb-8 px-3">
         <h2 className="text-xl font-bold bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">
-          BarberShop Admin
+          Staff Portal
         </h2>
       </div>
       <nav className="flex-1 space-y-1">

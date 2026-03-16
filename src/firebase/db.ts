@@ -100,6 +100,37 @@ export function subscribeToAppointments(
 }
 
 /**
+ * Subscribe to appointments assigned to a specific staff member.
+ * Optionally filter by date (YYYY-MM-DD format).
+ */
+export function subscribeToStaffAppointments(
+  rtdb: Database,
+  staffId: string,
+  callback: (appointments: Appointment[]) => void,
+  dateFilter?: string
+): () => void {
+  const appointmentsRef = ref(rtdb, 'appointments');
+  const listener = onValue(appointmentsRef, (snapshot) => {
+    if (!snapshot.exists()) {
+      callback([]);
+      return;
+    }
+    const result: Appointment[] = [];
+    snapshot.forEach((child) => {
+      const appt = { id: child.key!, ...child.val() } as Appointment;
+      if (appt.staffId === staffId) {
+        if (!dateFilter || appt.date === dateFilter) {
+          result.push(appt);
+        }
+      }
+    });
+    // Sort by time
+    callback(result.sort((a, b) => a.time.localeCompare(b.time)));
+  });
+  return () => off(appointmentsRef, 'value', listener);
+}
+
+/**
  * Update the status of an appointment.
  */
 export async function updateAppointmentStatusRTDB(

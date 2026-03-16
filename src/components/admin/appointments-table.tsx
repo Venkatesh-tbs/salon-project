@@ -1,19 +1,21 @@
 'use client';
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Appointment, AppointmentStatus, deleteAppointmentRTDB } from "@/firebase/db";
 import { db } from "@/firebase";
 import { ref, update } from "firebase/database";
 import { format } from "date-fns";
 import { 
-  Clock, CheckCircle2, XCircle, Trash2, User, Phone, Calendar, Tag, 
-  ChevronRight, Loader2, CheckCheck
+  Clock, XCircle, Trash2, User, Phone, Calendar, Tag, 
+  ChevronRight, Loader2, CheckCheck, UserPlus
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { staffService } from "@/services/api";
 
 interface AppointmentsTableProps {
   appointments: Appointment[];
   isLoading?: boolean;
+  staffView?: boolean;
 }
 
 const STATUS_CONFIG: Record<AppointmentStatus, { label: string; dotClass: string; badgeClass: string }> = {
@@ -39,9 +41,23 @@ const STATUS_CONFIG: Record<AppointmentStatus, { label: string; dotClass: string
   },
 };
 
-export function AppointmentsTable({ appointments, isLoading = false }: AppointmentsTableProps) {
+export function AppointmentsTable({ appointments, isLoading = false, staffView = false }: AppointmentsTableProps) {
   const { toast } = useToast();
   const [loadingId, setLoadingId] = useState<string | null>(null);
+  const [staffList, setStaffList] = useState<{ staffId: string; name: string }[]>([]);
+
+  useEffect(() => {
+    if (!staffView) {
+      staffService.getAll().then((s) => setStaffList(s)).catch(() => {});
+    }
+  }, [staffView]);
+
+  const handleAssignStaff = async (apptId: string, staffId: string) => {
+    const staff = staffList.find((s) => s.staffId === staffId);
+    const apptRef = ref(db, `appointments/${apptId}`);
+    await update(apptRef, { staffId, staffName: staff?.name || '' });
+    toast({ title: 'Staff Assigned', description: `${staff?.name || 'Staff'} assigned to booking.` });
+  };
 
   const handleStatusChange = async (appointment: Appointment, status: AppointmentStatus) => {
     const apptId = appointment.id;
@@ -170,6 +186,11 @@ export function AppointmentsTable({ appointments, isLoading = false }: Appointme
               <th className="px-6 py-4 font-semibold tracking-wider">
                 <span className="flex items-center gap-2"><Calendar className="w-3.5 h-3.5" /> Date & Time</span>
               </th>
+              {!staffView && (
+                <th className="px-6 py-4 font-semibold tracking-wider">
+                  <span className="flex items-center gap-2"><UserPlus className="w-3.5 h-3.5" /> Staff</span>
+                </th>
+              )}
               <th className="px-6 py-4 font-semibold tracking-wider">Status</th>
               <th className="px-6 py-4 font-semibold tracking-wider text-right">Actions</th>
             </tr>
@@ -208,6 +229,24 @@ export function AppointmentsTable({ appointments, isLoading = false }: Appointme
                       <Clock className="w-3 h-3" /> {appt.time}
                     </div>
                   </td>
+                  {/* Staff Assignment (Admin only) */}
+                  {!staffView && (
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <select
+                        value={appt.staffId || ''}
+                        onChange={(e) => appt.id && handleAssignStaff(appt.id, e.target.value)}
+                        className="bg-zinc-800 border border-white/10 text-white text-xs rounded-lg px-2 py-1.5 outline-none focus:border-emerald-500 transition-colors"
+                      >
+                        <option value="">Unassigned</option>
+                        {staffList.map((s) => (
+                          <option key={s.staffId} value={s.staffId}>{s.name}</option>
+                        ))}
+                      </select>
+                      {appt.staffName && (
+                        <div className="text-xs text-emerald-400 mt-0.5">{appt.staffName}</div>
+                      )}
+                    </td>
+                  )}
                   {/* Status Badge */}
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-semibold tracking-wide uppercase ${cfg.badgeClass}`}>
@@ -218,7 +257,7 @@ export function AppointmentsTable({ appointments, isLoading = false }: Appointme
                   {/* Actions */}
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center justify-end gap-1.5">
-                      {appt.status === 'pending' && (
+                      {!staffView && appt.status === 'pending' && (
                         <button
                           onClick={() => handleStatusChange(appt, 'confirmed')}
                           disabled={!!isActing}
@@ -240,7 +279,7 @@ export function AppointmentsTable({ appointments, isLoading = false }: Appointme
                           Complete
                         </button>
                       )}
-                      {appt.status !== 'cancelled' && appt.status !== 'completed' && (
+                      {!staffView && appt.status !== 'cancelled' && appt.status !== 'completed' && (
                         <button
                           onClick={() => handleStatusChange(appt, 'cancelled')}
                           disabled={!!isActing}
@@ -251,6 +290,7 @@ export function AppointmentsTable({ appointments, isLoading = false }: Appointme
                           Cancel
                         </button>
                       )}
+                      {!staffView && (
                       <button
                         onClick={() => appt.id && handleDelete(appt.id)}
                         disabled={!!isActing}
@@ -259,6 +299,7 @@ export function AppointmentsTable({ appointments, isLoading = false }: Appointme
                       >
                         {loadingId === appt.id + 'delete' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
                       </button>
+                      )}
                     </div>
                   </td>
                 </tr>
