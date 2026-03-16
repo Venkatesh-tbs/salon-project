@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 
-// Use the same fallback key as firebase/config.ts
-const FIREBASE_API_KEY = process.env.NEXT_PUBLIC_FIREBASE_API_KEY || 'AIzaSyC06B8SWyverNAL_hD9Egkzx1ZVhw-o4tk';
+// Use the exact key from the Firebase Console screenshot
+const FIREBASE_API_KEY = process.env.NEXT_PUBLIC_FIREBASE_API_KEY || 'AIzaSyCO68BSWyverNAl_hD9Egkzx1Zvhw-o4tk';
 
 async function verifyIdToken(idToken: string): Promise<{ uid: string; email: string } | null> {
   try {

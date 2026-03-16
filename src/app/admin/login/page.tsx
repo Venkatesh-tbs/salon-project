@@ -7,13 +7,19 @@ import Link from 'next/link';
 import { Lock, Mail, Eye, EyeOff, Loader2, AlertCircle, ShieldCheck } from 'lucide-react';
 import { loginWithEmailFlow } from '@/firebase/auth/client-flow';
 
-function getFirebaseError(code: string): string {
+function getFirebaseError(err: any): string {
+  if (!err) return 'Login failed. Please try again.';
+  const code = err.code || '';
+  const msg = err.message || '';
+  
   if (code.includes('user-not-found') || code.includes('wrong-password') || code.includes('invalid-credential')) {
     return 'Invalid email or password. Please check and try again.';
   }
   if (code.includes('too-many-requests')) return 'Too many attempts. Please try again later.';
   if (code.includes('network')) return 'Network error. Check your connection.';
-  return 'Login failed. Please try again.';
+  
+  // Return the actual error message if we don't recognize the code
+  return msg || 'Login failed. Please try again.';
 }
 
 export default function AdminLoginPage() {
@@ -33,7 +39,8 @@ export default function AdminLoginPage() {
       router.push('/admin/dashboard');
       router.refresh();
     } catch (err: any) {
-      setError(getFirebaseError(err?.code || ''));
+      console.error("Login caught error:", err);
+      setError(getFirebaseError(err));
     } finally {
       setLoading(false);
     }
