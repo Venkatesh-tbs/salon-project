@@ -79,24 +79,18 @@ function WeekEventCard({ event }: { event: CalendarEvent }) {
   const color = STATUS_COLOR[event.status] ?? '#a78bfa';
   return (
     <div
-      className="group w-full h-full rounded-md px-1.5 py-1 leading-tight overflow-hidden transition-all duration-150 hover:scale-[1.01] cursor-pointer flex flex-col"
+      className="w-full h-full rounded px-1.5 py-1 opacity-95 transition-all duration-150 hover:opacity-100 hover:brightness-110 cursor-pointer flex flex-col overflow-hidden"
       style={{
-        background: `${color}35`,
+        background: `${color}25`,
         borderLeft: `3px solid ${color}`,
-        color: color,
-        borderTop: `1px solid ${color}30`,
-        borderRight: `1px solid ${color}30`,
-        borderBottom: `1px solid ${color}30`,
-        minHeight: '22px',
-        marginRight: '2px',
-        marginLeft: '1px'
+        marginRight: '3px'
       }}
       title={`${appt.name} · ${appt.service} · ${appt.time}`}
     >
-      <div className="font-bold truncate text-white" style={{ fontSize: '11px' }}>{appt.name}</div>
-      <div className="flex flex-col gap-0.5 mt-0.5 opacity-75 overflow-hidden text-[10px]">
-        <span className="truncate flex items-center gap-1"><Clock className="w-[10px] h-[10px] flex-shrink-0" />{appt.time}</span>
-        <span className="truncate flex items-center gap-1"><Scissors className="w-[10px] h-[10px] flex-shrink-0" />{appt.service}</span>
+      <div className="font-bold truncate text-[11px] text-white/95 leading-tight">{appt.name}</div>
+      <div className="flex flex-col gap-[1px] mt-0.5 opacity-80 overflow-hidden text-[9px] leading-tight">
+        <span className="truncate flex items-center gap-1"><Clock className="w-2.5 h-2.5 flex-shrink-0" />{appt.time}</span>
+        <span className="truncate flex items-center gap-1"><Scissors className="w-2.5 h-2.5 flex-shrink-0" />{appt.service}</span>
       </div>
     </div>
   );
@@ -277,7 +271,7 @@ export function CalendarView({ appointments }: CalendarViewProps) {
           .rbc-time-header { border-color: rgba(255,255,255,0.07) !important; }
           .rbc-time-header-content { border-color: rgba(255,255,255,0.07) !important; }
           .rbc-time-content { border-color: rgba(255,255,255,0.07) !important; }
-          .rbc-timeslot-group { border-color: rgba(255,255,255,0.04) !important; min-height: 44px; }
+          .rbc-timeslot-group { border-color: rgba(255,255,255,0.04) !important; min-height: 90px !important; }
           .rbc-time-slot { border-color: rgba(255,255,255,0.03) !important; }
           .rbc-time-gutter .rbc-label { color: rgba(255,255,255,0.25); font-size: 10px; font-weight: 600; letter-spacing: 0.04em; padding-right: 10px; }
           .rbc-current-time-indicator { background: #a78bfa; height: 2px; box-shadow: 0 0 8px #a78bfa88; }
