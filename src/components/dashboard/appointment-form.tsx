@@ -265,7 +265,7 @@ export function AppointmentForm({ initialData, onSuccess }: AppointmentFormProps
   const [pendingValues, setPendingValues] = React.useState<z.infer<typeof formSchema> | null>(null);
   const [pendingBookingId] = React.useState(() => uuidv4());
 
-  const todayStr = format(new Date(), 'yyyy-MM-dd');
+  const todayStr = new Date().toISOString().split("T")[0];
 
   // Load services from Firebase
   React.useEffect(() => {

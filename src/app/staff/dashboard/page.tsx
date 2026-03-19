@@ -23,7 +23,7 @@ export default function StaffDashboardPage() {
   const [completingId, setCompletingId] = useState<string | null>(null);
   const router = useRouter();
 
-  const today = format(new Date(), 'yyyy-MM-dd');
+  const today = new Date().toISOString().split("T")[0];
   const todayDisplay = format(new Date(), 'EEEE, MMMM d');
 
   useEffect(() => {

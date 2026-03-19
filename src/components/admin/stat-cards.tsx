@@ -7,7 +7,7 @@ interface StatCardsProps {
 }
 
 export function StatCards({ appointments }: StatCardsProps) {
-  const todayStr = format(new Date(), 'yyyy-MM-dd');
+  const todayStr = new Date().toISOString().split("T")[0];
 
   const todaysBookings = appointments.filter(a => a.date === todayStr).length;
   const totalBookings = appointments.length;
