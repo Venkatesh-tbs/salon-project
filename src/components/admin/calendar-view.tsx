@@ -74,61 +74,65 @@ function EventCard({ event }: { event: CalendarEvent }) {
 }
 
 // ─── Clustering Algorithm ───────────────────────────────────
+/**
+ * Groups events by day and then clusters them if more than 2 overlap transitively.
+ * A transitive overlap group is a set of events where each event's interval 
+ * overlaps with the union of the previous intervals in that group.
+ */
 function clusterTimelineEvents(events: CalendarEvent[]): any[] {
-  const sorted = [...events].sort((a, b) => 
-    (a.start as Date).getTime() - (b.start as Date).getTime() || 
-    (b.end as Date).getTime() - (a.end as Date).getTime()
-  );
+  // 1. Group by Day
+  const dayGroups: Record<string, CalendarEvent[]> = {};
+  for (const ev of events) {
+    const d = (ev.start as Date).toDateString();
+    if (!dayGroups[d]) dayGroups[d] = [];
+    dayGroups[d].push(ev);
+  }
 
   const result: any[] = [];
-  let currentGroup: CalendarEvent[] = [];
-  let currentGroupEnd = 0;
 
-  for (const event of sorted) {
-    const start = (event.start as Date).getTime();
-    const end = (event.end as Date).getTime();
+  for (const dayStr of Object.keys(dayGroups)) {
+    const dayEvents = dayGroups[dayStr].sort((a, b) => 
+      (a.start as Date).getTime() - (b.start as Date).getTime() ||
+      (b.end as Date).getTime() - (a.end as Date).getTime()
+    );
 
-    if (currentGroup.length === 0) {
-      currentGroup.push(event);
-      currentGroupEnd = end;
-    } else {
-      if (start < currentGroupEnd) {
-        currentGroup.push(event);
-        if (end > currentGroupEnd) currentGroupEnd = end;
-      } else {
-        if (currentGroup.length > 2) {
-          const cStart = new Date(Math.min(...currentGroup.map(e => (e.start as Date).getTime())));
-          result.push({
-            id: `cluster-${cStart.getTime()}`,
-            title: `+${currentGroup.length} bookings`,
-            start: cStart,
-            end: new Date(currentGroupEnd),
-            status: 'cluster',
-            clusterEvents: currentGroup,
-            appointmentData: {} as any
-          });
+    let i = 0;
+    while (i < dayEvents.length) {
+      let batch = [dayEvents[i]];
+      let batchEnd = (dayEvents[i].end as Date).getTime();
+      let j = i + 1;
+
+      // Sweep-line: find all events that transitively overlap
+      while (j < dayEvents.length) {
+        const nextStart = (dayEvents[j].start as Date).getTime();
+        if (nextStart < batchEnd) {
+          batch.push(dayEvents[j]);
+          batchEnd = Math.max(batchEnd, (dayEvents[j].end as Date).getTime());
+          j++;
         } else {
-          result.push(...currentGroup);
+          break;
         }
-        currentGroup = [event];
-        currentGroupEnd = end;
       }
+
+      // If batch > 2, collapse into cluster
+      if (batch.length > 2) {
+        const start = new Date(Math.min(...batch.map(e => (e.start as Date).getTime())));
+        const end = new Date(batchEnd);
+        result.push({
+          id: `cluster-${start.getTime()}-${dayStr}`,
+          title: `+${batch.length} bookings`,
+          start,
+          end,
+          status: 'cluster',
+          clusterEvents: batch,
+          appointmentData: {} as any
+        });
+      } else {
+        // Keep 1 or 2 as individual events
+        result.push(...batch);
+      }
+      i = j; // Move to next non-overlapping event
     }
-  }
-  
-  if (currentGroup.length > 2) {
-    const cStart = new Date(Math.min(...currentGroup.map(e => (e.start as Date).getTime())));
-    result.push({
-      id: `cluster-${cStart.getTime()}`,
-      title: `+${currentGroup.length} bookings`,
-      start: cStart,
-      end: new Date(currentGroupEnd),
-      status: 'cluster',
-      clusterEvents: currentGroup,
-      appointmentData: {} as any
-    });
-  } else {
-    result.push(...currentGroup);
   }
 
   return result;
@@ -138,24 +142,32 @@ function clusterTimelineEvents(events: CalendarEvent[]): any[] {
 function WeekEventCard({ event }: { event: any }) {
   if (event.status === 'cluster') {
     return (
-      <div className="w-full h-full p-0.5">
+      <div className="w-full h-full p-1 group">
         <div
-          className="w-full h-full rounded-lg px-2 py-1.5 transition-all duration-200 flex flex-col items-center justify-center cursor-pointer hover:scale-[1.02] hover:-translate-y-[1px] relative overflow-hidden"
+          className="w-full h-full rounded-xl px-2 py-1.5 transition-all duration-300 flex flex-col items-center justify-center cursor-pointer hover:scale-[1.02] hover:-translate-y-[1px] relative overflow-hidden"
           style={{
-            background: 'linear-gradient(to bottom right, rgba(139,92,246,0.22), rgba(124,58,237,0.08))',
-            backdropFilter: 'blur(12px)',
-            WebkitBackdropFilter: 'blur(12px)',
+            background: 'linear-gradient(to bottom right, rgba(139,92,246,0.28), rgba(124,58,237,0.12))',
+            backdropFilter: 'blur(16px)',
+            WebkitBackdropFilter: 'blur(16px)',
             border: '1.5px dashed rgba(139,92,246,0.5)',
-            color: '#d8b4fe',
-            boxShadow: '0 4px 15px rgba(0,0,0,0.1)',
+            color: '#e9d5ff',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.2), inset 0 0 20px rgba(139,92,246,0.1)',
             minHeight: '34px'
           }}
-          onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 6px 20px rgba(139,92,246,0.3)', e.currentTarget.style.border = '1.5px dashed rgba(139,92,246,0.8)'; }}
-          onMouseLeave={(e) => { e.currentTarget.style.boxShadow = '0 4px 15px rgba(0,0,0,0.1)'; e.currentTarget.style.border = '1.5px dashed rgba(139,92,246,0.5)'; }}
+          onMouseEnter={(e) => { 
+            e.currentTarget.style.boxShadow = '0 12px 40px rgba(139,92,246,0.4)'; 
+            e.currentTarget.style.border = '1.5px dashed rgba(139,92,246,0.9)';
+            e.currentTarget.style.background = 'linear-gradient(to bottom right, rgba(139,92,246,0.35), rgba(124,58,237,0.18))';
+          }}
+          onMouseLeave={(e) => { 
+            e.currentTarget.style.boxShadow = '0 8px 32px rgba(0,0,0,0.2), inset 0 0 20px rgba(139,92,246,0.1)'; 
+            e.currentTarget.style.border = '1.5px dashed rgba(139,92,246,0.5)';
+            e.currentTarget.style.background = 'linear-gradient(to bottom right, rgba(139,92,246,0.28), rgba(124,58,237,0.12))';
+          }}
           title={event.title}
         >
-          <span className="font-bold text-[11px] whitespace-nowrap overflow-hidden text-ellipsis drop-shadow-md flex items-center justify-center gap-1 w-full text-center">
-            {event.title} <span className="opacity-80">→</span>
+          <span className="font-extrabold text-[12px] whitespace-nowrap overflow-hidden text-ellipsis drop-shadow-lg flex items-center justify-center gap-1 w-full text-center tracking-tight">
+            {event.title} <span className="opacity-70 group-hover:translate-x-1 transition-transform">→</span>
           </span>
         </div>
       </div>
@@ -165,31 +177,38 @@ function WeekEventCard({ event }: { event: any }) {
   const appt = event.appointmentData;
   const color = STATUS_COLOR[event.status] ?? '#a78bfa';
   return (
-    <div className="w-full h-full p-0.5">
+    <div className="w-full h-full p-1">
       <div
-        className="w-full h-full rounded-lg px-2.5 py-2 opacity-[0.98] transition-all duration-200 cursor-pointer flex flex-col overflow-hidden hover:scale-[1.01] hover:-translate-y-[1px]"
+        className="w-full h-full rounded-xl px-3 py-2 opacity-[0.98] transition-all duration-300 cursor-pointer flex flex-col overflow-hidden hover:scale-[1.03] hover:-translate-y-[2px] group"
         style={{
-          background: `${color}18`,
-          borderLeft: `4px solid ${color}`,
-          borderTop: `1px solid ${color}40`,
-          borderRight: `1px solid ${color}40`,
-          borderBottom: `1px solid ${color}40`,
-          boxShadow: '0 4px 12px rgba(0,0,0,0.15), inset 0 0 10px rgba(255,255,255,0.02)',
-          minHeight: '34px'
+          background: `${color}1A`,
+          borderLeft: `5px solid ${color}`,
+          borderTop: `1px solid ${color}45`,
+          borderRight: `1px solid ${color}45`,
+          borderBottom: `1px solid ${color}45`,
+          boxShadow: '0 8px 20px rgba(0,0,0,0.18), inset 0 0 10px rgba(255,255,255,0.03)',
+          minHeight: '34px',
+          backdropFilter: 'blur(8px)',
         }}
-        onMouseEnter={(e) => { e.currentTarget.style.boxShadow = `0 6px 16px ${color}35`; e.currentTarget.style.background = `${color}25`; }}
-        onMouseLeave={(e) => { e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15), inset 0 0 10px rgba(255,255,255,0.02)'; e.currentTarget.style.background = `${color}18`; }}
+        onMouseEnter={(e) => { 
+          e.currentTarget.style.boxShadow = `0 12px 24px ${color}45`; 
+          e.currentTarget.style.background = `${color}25`; 
+        }}
+        onMouseLeave={(e) => { 
+          e.currentTarget.style.boxShadow = '0 8px 20px rgba(0,0,0,0.18), inset 0 0 10px rgba(255,255,255,0.03)'; 
+          e.currentTarget.style.background = `${color}1A`; 
+        }}
         title={`${appt.name} · ${appt.service} · ${appt.time}`}
       >
-        <div className="font-bold truncate text-[11px] text-white/95 leading-snug drop-shadow-sm mb-0.5 tracking-wide">
+        <div className="font-bold truncate text-[12px] text-white leading-snug drop-shadow-md mb-1 tracking-tight group-hover:text-amber-50 transition-colors">
           {appt.name}
         </div>
-        <div className="flex flex-col gap-[2px] opacity-80 overflow-hidden text-[9px] leading-tight">
-          <span className="truncate flex items-center gap-1 text-white/90">
-            <Clock className="w-2.5 h-2.5 flex-shrink-0 opacity-70" /> {appt.time}
+        <div className="flex flex-col gap-[1px] opacity-85 overflow-hidden text-[10px] leading-tight">
+          <span className="truncate flex items-center gap-1.5 text-white/90 font-medium">
+            <Clock className="w-3 h-3 flex-shrink-0 opacity-80" /> {appt.time}
           </span>
-          <span className="truncate flex items-center gap-1 text-white/70">
-            <Scissors className="w-2.5 h-2.5 flex-shrink-0 opacity-60" /> {appt.service}
+          <span className="truncate flex items-center gap-1.5 text-white/70">
+            <Scissors className="w-3 h-3 flex-shrink-0 opacity-70" /> {appt.service}
           </span>
         </div>
       </div>
@@ -385,9 +404,13 @@ export function CalendarView({ appointments }: CalendarViewProps) {
           .rbc-timeslot-group { border-color: rgba(255,255,255,0.04) !important; min-height: 90px !important; }
           .rbc-time-slot { border-color: rgba(255,255,255,0.03) !important; }
           .rbc-day-bg.rbc-today { background: linear-gradient(to bottom, rgba(167, 139, 250, 0.08), rgba(167, 139, 250, 0.01)) !important; }
-          .rbc-time-gutter .rbc-label { color: rgba(255,255,255,0.25); font-size: 10px; font-weight: 600; letter-spacing: 0.04em; padding-right: 10px; }
-          .rbc-current-time-indicator { background: #a78bfa; height: 2px; box-shadow: 0 0 8px #a78bfa88; }
+          .rbc-time-gutter .rbc-label { color: rgba(255,255,255,0.45); font-size: 11px; font-weight: 700; letter-spacing: 0.05em; padding-right: 14px; }
+          .rbc-current-time-indicator { background: #a78bfa; height: 2px; box-shadow: 0 0 12px #a78bfa; }
           .rbc-day-slot .rbc-time-slot { border-color: rgba(255,255,255,0.03) !important; }
+          .rbc-day-slot .rbc-event { 
+            width: calc(100% - 6px) !important;
+            margin: 0 3px !important; 
+          }
           .rbc-allday-cell { background: rgba(255,255,255,0.01); border-color: rgba(255,255,255,0.07) !important; }
           .rbc-time-view .rbc-header { border-color: rgba(255,255,255,0.07) !important; }
 
