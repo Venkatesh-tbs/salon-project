@@ -87,7 +87,9 @@ function WeekEventCard({ event }: { event: CalendarEvent }) {
         borderTop: `1px solid ${color}30`,
         borderRight: `1px solid ${color}30`,
         borderBottom: `1px solid ${color}30`,
-        minHeight: '22px'
+        minHeight: '22px',
+        marginRight: '2px',
+        marginLeft: '1px'
       }}
       title={`${appt.name} · ${appt.service} · ${appt.time}`}
     >
@@ -314,6 +316,7 @@ export function CalendarView({ appointments }: CalendarViewProps) {
           onDrillDown={handleDrillDown}
           onSelectSlot={handleSelectSlot as any}
           selectable
+          dayLayoutAlgorithm={'no-overlap'}
           tooltipAccessor={null as any}
           messages={{ showMore: (count: number) => `+${count} bookings` }}
           components={{
