@@ -99,12 +99,28 @@ export function CalendarView({ appointments }: CalendarViewProps) {
 
   const handleSelectEvent = useCallback((event: CalendarEvent) => {
     const date = event.start as Date;
-    // Show all events for this day
     const dayEvents = events.filter(e => {
       const d = e.start as Date;
       return d.toDateString() === date.toDateString();
     });
     setPanel({ open: true, date, events: dayEvents });
+  }, [events]);
+
+  // Intercept clicking on a day number or slot — show our premium panel
+  const handleDrillDown = useCallback((date: Date) => {
+    const dayEvents = events.filter(e => {
+      const d = e.start as Date;
+      return d.toDateString() === date.toDateString();
+    });
+    setPanel({ open: true, date, events: dayEvents });
+  }, [events]);
+
+  const handleSelectSlot = useCallback(({ start }: { start: Date }) => {
+    const dayEvents = events.filter(e => {
+      const d = e.start as Date;
+      return d.toDateString() === start.toDateString();
+    });
+    setPanel({ open: true, date: start, events: dayEvents });
   }, [events]);
 
   const closePanel = useCallback(() => {
@@ -114,12 +130,12 @@ export function CalendarView({ appointments }: CalendarViewProps) {
   const panelVariants = isMobile
     ? {
         hidden: { y: '100%', opacity: 0 },
-        visible: { y: 0, opacity: 1, transition: { type: 'spring', damping: 28, stiffness: 300 } },
+        visible: { y: 0, opacity: 1, transition: { type: 'spring' as const, damping: 28, stiffness: 300 } },
         exit: { y: '110%', opacity: 0, transition: { duration: 0.25 } },
       }
     : {
         hidden: { scale: 0.93, opacity: 0, y: 20 },
-        visible: { scale: 1, opacity: 1, y: 0, transition: { type: 'spring', damping: 28, stiffness: 350 } },
+        visible: { scale: 1, opacity: 1, y: 0, transition: { type: 'spring' as const, damping: 28, stiffness: 350 } },
         exit: { scale: 0.93, opacity: 0, y: 20, transition: { duration: 0.2 } },
       };
 
@@ -159,10 +175,13 @@ export function CalendarView({ appointments }: CalendarViewProps) {
         endAccessor="end"
         style={{ height: 580 }}
         eventPropGetter={eventStyleGetter as any}
-        views={['month', 'week', 'day', 'agenda']}
+        views={['month', 'week', 'agenda']}
         defaultView="month"
         onShowMore={handleShowMore as any}
         onSelectEvent={handleSelectEvent as any}
+        onDrillDown={handleDrillDown}
+        onSelectSlot={handleSelectSlot as any}
+        selectable
         tooltipAccessor={null as any}
       />
 
