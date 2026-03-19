@@ -167,18 +167,18 @@ function WeekEventCard({ event }: { event: any }) {
   return (
     <div className="w-full h-full p-0.5">
       <div
-        className="w-full h-full rounded-lg px-2 py-1.5 opacity-[0.98] transition-all duration-200 cursor-pointer flex flex-col overflow-hidden hover:scale-[1.01] hover:-translate-y-[1px]"
+        className="w-full h-full rounded-lg px-2.5 py-2 opacity-[0.98] transition-all duration-200 cursor-pointer flex flex-col overflow-hidden hover:scale-[1.01] hover:-translate-y-[1px]"
         style={{
           background: `${color}18`,
           borderLeft: `4px solid ${color}`,
-          borderTop: `1px solid ${color}20`,
-          borderRight: `1px solid ${color}20`,
-          borderBottom: `1px solid ${color}20`,
-          boxShadow: '0 4px 10px rgba(0,0,0,0.1)',
+          borderTop: `1px solid ${color}40`,
+          borderRight: `1px solid ${color}40`,
+          borderBottom: `1px solid ${color}40`,
+          boxShadow: '0 4px 12px rgba(0,0,0,0.15), inset 0 0 10px rgba(255,255,255,0.02)',
           minHeight: '34px'
         }}
         onMouseEnter={(e) => { e.currentTarget.style.boxShadow = `0 6px 16px ${color}35`; e.currentTarget.style.background = `${color}25`; }}
-        onMouseLeave={(e) => { e.currentTarget.style.boxShadow = '0 4px 10px rgba(0,0,0,0.1)'; e.currentTarget.style.background = `${color}18`; }}
+        onMouseLeave={(e) => { e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15), inset 0 0 10px rgba(255,255,255,0.02)'; e.currentTarget.style.background = `${color}18`; }}
         title={`${appt.name} · ${appt.service} · ${appt.time}`}
       >
         <div className="font-bold truncate text-[11px] text-white/95 leading-snug drop-shadow-sm mb-0.5 tracking-wide">
@@ -213,7 +213,7 @@ export function CalendarView({ appointments }: CalendarViewProps) {
 
   const events = useMemo<CalendarEvent[]>(() => {
     return appointments
-      .filter(a => a.date && a.time && a.name && (a.status !== 'cancelled'))
+      .filter(a => a.date && a.time && a.name && a.service && (a.status !== 'cancelled'))
       .map(a => {
         const [year, month, day] = a.date.split('-').map(Number);
         const [hour, minute] = a.time.split(':').map(Number);
@@ -384,6 +384,7 @@ export function CalendarView({ appointments }: CalendarViewProps) {
           .rbc-time-content { border-color: rgba(255,255,255,0.07) !important; }
           .rbc-timeslot-group { border-color: rgba(255,255,255,0.04) !important; min-height: 90px !important; }
           .rbc-time-slot { border-color: rgba(255,255,255,0.03) !important; }
+          .rbc-day-bg.rbc-today { background: linear-gradient(to bottom, rgba(167, 139, 250, 0.08), rgba(167, 139, 250, 0.01)) !important; }
           .rbc-time-gutter .rbc-label { color: rgba(255,255,255,0.25); font-size: 10px; font-weight: 600; letter-spacing: 0.04em; padding-right: 10px; }
           .rbc-current-time-indicator { background: #a78bfa; height: 2px; box-shadow: 0 0 8px #a78bfa88; }
           .rbc-day-slot .rbc-time-slot { border-color: rgba(255,255,255,0.03) !important; }
