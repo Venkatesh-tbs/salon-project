@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState, useCallback, useEffect, useRef } from 'react';
-import { Calendar, momentLocalizer, Event, Views } from 'react-big-calendar';
+import { Calendar, momentLocalizer, Event, Views, View } from 'react-big-calendar';
 import moment from 'moment';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import { Appointment } from '@/firebase/db';
@@ -73,8 +73,89 @@ function EventCard({ event }: { event: CalendarEvent }) {
   );
 }
 
+// ─── Clustering Algorithm ───────────────────────────────────
+function clusterTimelineEvents(events: CalendarEvent[]): any[] {
+  const sorted = [...events].sort((a, b) => 
+    (a.start as Date).getTime() - (b.start as Date).getTime() || 
+    (b.end as Date).getTime() - (a.end as Date).getTime()
+  );
+
+  const result: any[] = [];
+  let currentGroup: CalendarEvent[] = [];
+  let currentGroupEnd = 0;
+
+  for (const event of sorted) {
+    const start = (event.start as Date).getTime();
+    const end = (event.end as Date).getTime();
+
+    if (currentGroup.length === 0) {
+      currentGroup.push(event);
+      currentGroupEnd = end;
+    } else {
+      if (start < currentGroupEnd) {
+        currentGroup.push(event);
+        if (end > currentGroupEnd) currentGroupEnd = end;
+      } else {
+        if (currentGroup.length > 2) {
+          const cStart = new Date(Math.min(...currentGroup.map(e => (e.start as Date).getTime())));
+          result.push({
+            id: `cluster-${cStart.getTime()}`,
+            title: `+${currentGroup.length} bookings`,
+            start: cStart,
+            end: new Date(currentGroupEnd),
+            status: 'cluster',
+            clusterEvents: currentGroup,
+            appointmentData: {} as any
+          });
+        } else {
+          result.push(...currentGroup);
+        }
+        currentGroup = [event];
+        currentGroupEnd = end;
+      }
+    }
+  }
+  
+  if (currentGroup.length > 2) {
+    const cStart = new Date(Math.min(...currentGroup.map(e => (e.start as Date).getTime())));
+    result.push({
+      id: `cluster-${cStart.getTime()}`,
+      title: `+${currentGroup.length} bookings`,
+      start: cStart,
+      end: new Date(currentGroupEnd),
+      status: 'cluster',
+      clusterEvents: currentGroup,
+      appointmentData: {} as any
+    });
+  } else {
+    result.push(...currentGroup);
+  }
+
+  return result;
+}
+
 // ─── Timeline Event Card (Week / Day) ───────────────────────
-function WeekEventCard({ event }: { event: CalendarEvent }) {
+function WeekEventCard({ event }: { event: any }) {
+  if (event.status === 'cluster') {
+    return (
+      <div
+        className="w-full h-full rounded px-1.5 py-1 transition-all duration-150 flex items-center justify-center cursor-pointer shadow-sm hover:brightness-125"
+        style={{
+          background: 'var(--tw-gradient-stops)', 
+          backgroundImage: 'linear-gradient(to bottom right, rgba(139,92,246,0.22), rgba(124,58,237,0.12))',
+          border: '1px solid rgba(139,92,246,0.4)',
+          color: '#c4b5fd',
+          marginRight: '3px'
+        }}
+        title={event.title}
+      >
+        <span className="font-bold text-[11px] whitespace-nowrap overflow-hidden text-ellipsis drop-shadow-md">
+          {event.title}
+        </span>
+      </div>
+    );
+  }
+
   const appt = event.appointmentData;
   const color = STATUS_COLOR[event.status] ?? '#a78bfa';
   return (
@@ -99,6 +180,7 @@ function WeekEventCard({ event }: { event: CalendarEvent }) {
 // ─── Main Component ─────────────────────────────────────────
 export function CalendarView({ appointments }: CalendarViewProps) {
   const [panel, setPanel] = useState<PanelState>({ open: false, date: null, events: [] });
+  const [view, setView] = useState<View>(Views.MONTH);
   const [isMobile, setIsMobile] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
 
@@ -128,6 +210,11 @@ export function CalendarView({ appointments }: CalendarViewProps) {
       });
   }, [appointments]);
 
+  const displayEvents = useMemo(() => {
+    if (view === Views.MONTH || view === Views.AGENDA) return events;
+    return clusterTimelineEvents(events);
+  }, [events, view]);
+
   const eventStyleGetter = useCallback((event: CalendarEvent) => {
     const color = STATUS_COLOR[event.status] ?? '#a78bfa';
     return {
@@ -148,7 +235,11 @@ export function CalendarView({ appointments }: CalendarViewProps) {
     setPanel(prev => ({ ...prev, open: false }));
   }, []);
 
-  const handleSelectEvent = useCallback((event: CalendarEvent) => {
+  const handleSelectEvent = useCallback((event: any) => {
+    if (event.status === 'cluster') {
+      openPanel(event.start as Date, event.clusterEvents);
+      return;
+    }
     const date = event.start as Date;
     const dayEvents = events.filter(e => (e.start as Date).toDateString() === date.toDateString());
     openPanel(date, dayEvents);
@@ -299,12 +390,14 @@ export function CalendarView({ appointments }: CalendarViewProps) {
 
         <Calendar
           localizer={localizer}
-          events={events}
+          events={displayEvents}
           startAccessor="start"
           endAccessor="end"
           style={{ height: 600 }}
           eventPropGetter={eventStyleGetter as any}
           views={[Views.MONTH, Views.WEEK, Views.DAY, Views.AGENDA]}
+          view={view}
+          onView={setView}
           defaultView={Views.MONTH}
           onShowMore={handleShowMore as any}
           onSelectEvent={handleSelectEvent as any}
