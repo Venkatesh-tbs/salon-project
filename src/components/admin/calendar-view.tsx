@@ -47,6 +47,51 @@ interface DayPanelState {
   events: CalendarEvent[];
 }
 
+// Custom Toolbar — hides the "Day" view button entirely
+function CustomToolbar({ label, onNavigate, onView, view }: any) {
+  const views = [
+    { key: 'month', label: 'Month' },
+    { key: 'week', label: 'Week' },
+    { key: 'agenda', label: 'Agenda' },
+  ];
+  return (
+    <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+      <div className="flex items-center gap-1">
+        <button
+          onClick={() => onNavigate('TODAY')}
+          className="px-3 py-1.5 rounded-lg text-xs font-semibold"
+          style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.12)' }}
+        >Today</button>
+        <button
+          onClick={() => onNavigate('PREV')}
+          className="px-3 py-1.5 rounded-lg text-xs font-semibold"
+          style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.12)' }}
+        >‹</button>
+        <button
+          onClick={() => onNavigate('NEXT')}
+          className="px-3 py-1.5 rounded-lg text-xs font-semibold"
+          style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.12)' }}
+        >›</button>
+      </div>
+      <span className="text-white font-bold text-sm">{label}</span>
+      <div className="flex items-center gap-1">
+        {views.map(v => (
+          <button
+            key={v.key}
+            onClick={() => onView(v.key)}
+            className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+            style={{
+              background: view === v.key ? 'rgba(124,58,237,0.3)' : 'rgba(255,255,255,0.05)',
+              color: view === v.key ? '#a78bfa' : 'rgba(255,255,255,0.5)',
+              border: `1px solid ${view === v.key ? 'rgba(124,58,237,0.5)' : 'rgba(255,255,255,0.1)'}`,
+            }}
+          >{v.label}</button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function CalendarView({ appointments }: CalendarViewProps) {
   const [panel, setPanel] = useState<DayPanelState>({ open: false, date: null, events: [] });
   const [isMobile, setIsMobile] = useState(false);
@@ -183,6 +228,7 @@ export function CalendarView({ appointments }: CalendarViewProps) {
         onSelectSlot={handleSelectSlot as any}
         selectable
         tooltipAccessor={null as any}
+        components={{ toolbar: CustomToolbar }}
       />
 
       {/* Overlay backdrop */}
