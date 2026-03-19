@@ -239,6 +239,7 @@ export function CalendarView({ appointments }: CalendarViewProps) {
           .rbc-event { background: transparent !important; border: none !important; padding: 0 !important; box-shadow: none !important; border-radius: 8px; }
           .rbc-event:focus { outline: none; }
           .rbc-event-content { overflow: visible; }
+          .rbc-time-view .rbc-event-label { display: none !important; }
 
           /* SHOW MORE LINK */
           .rbc-show-more {
