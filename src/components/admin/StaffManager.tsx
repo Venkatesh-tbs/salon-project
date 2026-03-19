@@ -101,75 +101,84 @@ export const StaffManager: React.FC = () => {
       </div>
 
       {loading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          {[1,2,3].map((i) => <div key={i} className="h-40 rounded-2xl bg-white/5 animate-pulse" />)}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-48 rounded-3xl bg-white/[0.03] animate-pulse border border-white/5" />
+          ))}
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {staff.map((s) => (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {staff.map((s, i) => (
             <motion.div
               key={s.staffId}
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
-              className="rounded-2xl border border-white/10 bg-white/[0.03] p-5"
+              transition={{ delay: i * 0.05 }}
+              className="rounded-3xl border border-white/10 bg-white/[0.03] p-6 hover-lift group relative overflow-hidden"
+              style={{ backdropFilter: 'blur(12px)' }}
             >
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center gap-3">
+              <div className="absolute -right-10 -top-10 w-32 h-32 bg-fuchsia-600/5 rounded-full blur-3xl group-hover:bg-fuchsia-600/10 transition-colors" />
+              
+              <div className="flex items-start justify-between mb-5 relative z-10">
+                <div className="flex items-center gap-4">
                   <div
-                    className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold"
+                    className="w-12 h-12 rounded-2xl flex items-center justify-center text-white font-black text-lg shadow-lg shadow-black/20"
                     style={{ background: "linear-gradient(135deg, #c026d3, #7c3aed)" }}
                   >
                     {s.name[0]}
                   </div>
                   <div>
-                    <p className="text-white font-semibold">{s.name}</p>
-                    <p className="text-white/40 text-xs">{s.role}</p>
+                    <p className="text-white font-bold text-base tracking-tight">{s.name}</p>
+                    <p className="text-white/40 text-xs font-medium uppercase tracking-wider">{s.role}</p>
                   </div>
                 </div>
                 <div className="flex gap-1">
                   <button
                     onClick={() => handleEdit(s)}
-                    className="p-1.5 rounded-lg hover:bg-white/10 text-white/40 hover:text-white transition-all text-xs"
+                    className="p-2 rounded-xl hover:bg-white/10 text-white/30 hover:text-white transition-all"
+                    title="Edit Stylist"
                   >
-                    ✏️
+                    <span className="text-sm">✏️</span>
                   </button>
                   <button
                     onClick={() => handleDelete(s.staffId)}
-                    className="p-1.5 rounded-lg hover:bg-red-500/10 text-white/40 hover:text-red-400 transition-all text-xs"
+                    className="p-2 rounded-xl hover:bg-red-500/10 text-white/30 hover:text-red-400 transition-all font-bold"
+                    title="Delete Stylist"
                   >
-                    🗑️
+                    <span className="text-sm">×</span>
                   </button>
                 </div>
               </div>
 
-              <div className="flex flex-wrap gap-1 mb-3">
+              <div className="flex flex-wrap gap-1.5 mb-5 relative z-10 font-medium">
                 {s.services?.slice(0, 3).map((svcId) => {
                   const svc = SERVICES_LIST.find((x) => x.id === svcId);
                   return svc ? (
-                    <span key={svcId} className="px-2 py-0.5 rounded-full text-[10px] bg-fuchsia-500/15 text-fuchsia-300 border border-fuchsia-500/20">
+                    <span key={svcId} className="px-2.5 py-1 rounded-full text-[10px] bg-fuchsia-500/10 text-fuchsia-400/90 border border-fuchsia-500/20 lowercase first-letter:uppercase">
                       {svc.name}
                     </span>
                   ) : null;
                 })}
                 {(s.services?.length || 0) > 3 && (
-                  <span className="px-2 py-0.5 rounded-full text-[10px] bg-white/5 text-white/30">
-                    +{s.services.length - 3}
+                  <span className="px-2.5 py-1 rounded-full text-[10px] bg-white/5 text-white/30">
+                    +{s.services.length - 3} more
                   </span>
                 )}
               </div>
 
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-2 relative z-10 bg-white/[0.02] p-2 rounded-2xl border border-white/5">
                 {DAYS.map((d) => (
                   <div
                     key={d}
-                    className="w-5 h-5 rounded flex items-center justify-center text-[8px] font-bold"
+                    className="flex-1 h-6 rounded-lg flex items-center justify-center text-[9px] font-black uppercase transition-all"
                     style={{
-                      background: (s.availability as any)?.[d]?.isOpen ? "#7c3aed33" : "rgba(255,255,255,0.05)",
-                      color:      (s.availability as any)?.[d]?.isOpen ? "#a78bfa" : "rgba(255,255,255,0.2)",
+                      background: (s.availability as any)?.[d]?.isOpen ? "rgba(167,139,250,0.15)" : "rgba(255,255,255,0.02)",
+                      color:      (s.availability as any)?.[d]?.isOpen ? "#a78bfa" : "rgba(255,255,255,0.15)",
+                      border:     (s.availability as any)?.[d]?.isOpen ? "1px solid rgba(167,139,250,0.1)" : "1px solid transparent",
                     }}
                     title={d}
                   >
-                    {d[0].toUpperCase()}
+                    {d[0]}
                   </div>
                 ))}
               </div>
