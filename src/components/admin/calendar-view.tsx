@@ -73,6 +73,33 @@ function EventCard({ event }: { event: CalendarEvent }) {
   );
 }
 
+// ─── Timeline Event Card (Week / Day) ───────────────────────
+function WeekEventCard({ event }: { event: CalendarEvent }) {
+  const appt = event.appointmentData;
+  const color = STATUS_COLOR[event.status] ?? '#a78bfa';
+  return (
+    <div
+      className="group w-full h-full rounded-md px-1.5 py-1 leading-tight overflow-hidden transition-all duration-150 hover:scale-[1.01] cursor-pointer flex flex-col"
+      style={{
+        background: `${color}1A`,
+        borderLeft: `3px solid ${color}`,
+        color: color,
+        borderTop: `1px solid ${color}30`,
+        borderRight: `1px solid ${color}30`,
+        borderBottom: `1px solid ${color}30`,
+        minHeight: '22px'
+      }}
+      title={`${appt.name} · ${appt.service} · ${appt.time}`}
+    >
+      <div className="font-bold truncate text-white" style={{ fontSize: '11px' }}>{appt.name}</div>
+      <div className="flex flex-col gap-0.5 mt-0.5 opacity-75 overflow-hidden text-[10px]">
+        <span className="truncate flex items-center gap-1"><Clock className="w-[10px] h-[10px] flex-shrink-0" />{appt.time}</span>
+        <span className="truncate flex items-center gap-1"><Scissors className="w-[10px] h-[10px] flex-shrink-0" />{appt.service}</span>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Component ─────────────────────────────────────────
 export function CalendarView({ appointments }: CalendarViewProps) {
   const [panel, setPanel] = useState<PanelState>({ open: false, date: null, events: [] });
@@ -290,7 +317,9 @@ export function CalendarView({ appointments }: CalendarViewProps) {
           tooltipAccessor={null as any}
           messages={{ showMore: (count: number) => `+${count} bookings` }}
           components={{
-            event: ({ event }) => <EventCard event={event as CalendarEvent} />,
+            month: { event: ({ event }) => <EventCard event={event as CalendarEvent} /> },
+            week:  { event: ({ event }) => <WeekEventCard event={event as CalendarEvent} /> },
+            day:   { event: ({ event }) => <WeekEventCard event={event as CalendarEvent} /> },
           }}
         />
       </div>
