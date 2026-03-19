@@ -81,7 +81,7 @@ function WeekEventCard({ event }: { event: CalendarEvent }) {
     <div
       className="group w-full h-full rounded-md px-1.5 py-1 leading-tight overflow-hidden transition-all duration-150 hover:scale-[1.01] cursor-pointer flex flex-col"
       style={{
-        background: `${color}1A`,
+        background: `${color}35`,
         borderLeft: `3px solid ${color}`,
         color: color,
         borderTop: `1px solid ${color}30`,
@@ -318,6 +318,7 @@ export function CalendarView({ appointments }: CalendarViewProps) {
           onSelectSlot={handleSelectSlot as any}
           selectable
           dayLayoutAlgorithm={'no-overlap'}
+          formats={{ eventTimeRangeFormat: () => '' }}
           tooltipAccessor={null as any}
           messages={{ showMore: (count: number) => `+${count} bookings` }}
           components={{
