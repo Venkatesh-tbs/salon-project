@@ -140,15 +140,18 @@ function WeekEventCard({ event }: { event: any }) {
     return (
       <div className="w-full h-full p-0.5">
         <div
-          className="w-full h-full rounded-md px-2 py-1.5 transition-all duration-200 flex flex-col items-center justify-center cursor-pointer shadow-sm hover:scale-[1.02] hover:-translate-y-[1px]"
+          className="w-full h-full rounded-lg px-2 py-1.5 transition-all duration-200 flex flex-col items-center justify-center cursor-pointer hover:scale-[1.02] hover:-translate-y-[1px] relative overflow-hidden"
           style={{
-            background: 'linear-gradient(to bottom right, rgba(139,92,246,0.15), rgba(124,58,237,0.05))',
-            border: '1.5px dashed rgba(139,92,246,0.4)',
-            color: '#c4b5fd',
-            boxShadow: '0 0 0 rgba(139,92,246,0)',
+            background: 'linear-gradient(to bottom right, rgba(139,92,246,0.22), rgba(124,58,237,0.08))',
+            backdropFilter: 'blur(12px)',
+            WebkitBackdropFilter: 'blur(12px)',
+            border: '1.5px dashed rgba(139,92,246,0.5)',
+            color: '#d8b4fe',
+            boxShadow: '0 4px 15px rgba(0,0,0,0.1)',
+            minHeight: '34px'
           }}
-          onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 4px 15px rgba(139,92,246,0.25), 0 0 20px rgba(124,58,237,0.15)'; e.currentTarget.style.border = '1.5px dashed rgba(139,92,246,0.7)'; }}
-          onMouseLeave={(e) => { e.currentTarget.style.boxShadow = '0 0 0 rgba(139,92,246,0)'; e.currentTarget.style.border = '1.5px dashed rgba(139,92,246,0.4)'; }}
+          onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 6px 20px rgba(139,92,246,0.3)', e.currentTarget.style.border = '1.5px dashed rgba(139,92,246,0.8)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.boxShadow = '0 4px 15px rgba(0,0,0,0.1)'; e.currentTarget.style.border = '1.5px dashed rgba(139,92,246,0.5)'; }}
           title={event.title}
         >
           <span className="font-bold text-[11px] whitespace-nowrap overflow-hidden text-ellipsis drop-shadow-md flex items-center justify-center gap-1 w-full text-center">
@@ -164,17 +167,18 @@ function WeekEventCard({ event }: { event: any }) {
   return (
     <div className="w-full h-full p-0.5">
       <div
-        className="w-full h-full rounded-md px-2 py-1.5 opacity-95 transition-all duration-200 cursor-pointer flex flex-col overflow-hidden hover:scale-[1.01] hover:-translate-y-[1px]"
+        className="w-full h-full rounded-lg px-2 py-1.5 opacity-[0.98] transition-all duration-200 cursor-pointer flex flex-col overflow-hidden hover:scale-[1.01] hover:-translate-y-[1px]"
         style={{
           background: `${color}18`,
-          borderLeft: `3.5px solid ${color}`,
+          borderLeft: `4px solid ${color}`,
           borderTop: `1px solid ${color}20`,
           borderRight: `1px solid ${color}20`,
           borderBottom: `1px solid ${color}20`,
-          boxShadow: '0 0 0 rgba(0,0,0,0)',
+          boxShadow: '0 4px 10px rgba(0,0,0,0.1)',
+          minHeight: '34px'
         }}
-        onMouseEnter={(e) => { e.currentTarget.style.boxShadow = `0 4px 12px ${color}25`; e.currentTarget.style.background = `${color}25`; }}
-        onMouseLeave={(e) => { e.currentTarget.style.boxShadow = '0 0 0 rgba(0,0,0,0)'; e.currentTarget.style.background = `${color}18`; }}
+        onMouseEnter={(e) => { e.currentTarget.style.boxShadow = `0 6px 16px ${color}35`; e.currentTarget.style.background = `${color}25`; }}
+        onMouseLeave={(e) => { e.currentTarget.style.boxShadow = '0 4px 10px rgba(0,0,0,0.1)'; e.currentTarget.style.background = `${color}18`; }}
         title={`${appt.name} · ${appt.service} · ${appt.time}`}
       >
         <div className="font-bold truncate text-[11px] text-white/95 leading-snug drop-shadow-sm mb-0.5 tracking-wide">
@@ -209,7 +213,7 @@ export function CalendarView({ appointments }: CalendarViewProps) {
 
   const events = useMemo<CalendarEvent[]>(() => {
     return appointments
-      .filter(a => a.date && a.time)
+      .filter(a => a.date && a.time && a.name && (a.status !== 'cancelled'))
       .map(a => {
         const [year, month, day] = a.date.split('-').map(Number);
         const [hour, minute] = a.time.split(':').map(Number);
