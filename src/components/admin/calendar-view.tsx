@@ -1,10 +1,12 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState, useCallback, useEffect } from 'react';
 import { Calendar, momentLocalizer, Event } from 'react-big-calendar';
 import moment from 'moment';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import { Appointment } from '@/firebase/db';
+import { motion, AnimatePresence } from 'framer-motion';
+import { X, Clock, Scissors, User, CheckCircle2, AlertCircle, Circle, XCircle } from 'lucide-react';
 
 const localizer = momentLocalizer(moment);
 
@@ -15,6 +17,7 @@ interface CalendarViewProps {
 interface CalendarEvent extends Event {
   id: string;
   status: string;
+  appointmentData: Appointment;
 }
 
 const STATUS_COLOR: Record<string, string> = {
@@ -24,7 +27,37 @@ const STATUS_COLOR: Record<string, string> = {
   cancelled: '#f87171',
 };
 
+const STATUS_BG: Record<string, string> = {
+  pending: 'rgba(250,204,21,0.1)',
+  confirmed: 'rgba(96,165,250,0.1)',
+  completed: 'rgba(74,222,128,0.1)',
+  cancelled: 'rgba(248,113,113,0.1)',
+};
+
+const STATUS_ICON: Record<string, React.ElementType> = {
+  pending: AlertCircle,
+  confirmed: Circle,
+  completed: CheckCircle2,
+  cancelled: XCircle,
+};
+
+interface DayPanelState {
+  open: boolean;
+  date: Date | null;
+  events: CalendarEvent[];
+}
+
 export function CalendarView({ appointments }: CalendarViewProps) {
+  const [panel, setPanel] = useState<DayPanelState>({ open: false, date: null, events: [] });
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
+
   const events = useMemo<CalendarEvent[]>(() => {
     return appointments
       .filter(a => a.date && a.time)
@@ -32,13 +65,14 @@ export function CalendarView({ appointments }: CalendarViewProps) {
         const [year, month, day] = a.date.split('-').map(Number);
         const [hour, minute] = a.time.split(':').map(Number);
         const start = new Date(year, month - 1, day, hour, minute);
-        const end = new Date(start.getTime() + 30 * 60 * 1000); // default 30 min
+        const end = new Date(start.getTime() + (a.serviceDuration || 30) * 60 * 1000);
         return {
           id: a.id!,
           title: `${a.name} – ${a.service}`,
           start,
           end,
           status: a.status,
+          appointmentData: a,
         };
       });
   }, [appointments]);
@@ -47,21 +81,51 @@ export function CalendarView({ appointments }: CalendarViewProps) {
     const color = STATUS_COLOR[event.status] ?? '#a78bfa';
     return {
       style: {
-        backgroundColor: `${color}20`,
-        border: `1px solid ${color}60`,
+        backgroundColor: `${color}18`,
+        border: `1px solid ${color}50`,
         color: color,
         borderRadius: '8px',
-        fontSize: '12px',
+        fontSize: '11px',
         fontWeight: 600,
         padding: '2px 6px',
+        cursor: 'pointer',
       },
     };
   };
 
+  const handleShowMore = useCallback((evts: CalendarEvent[], date: Date) => {
+    setPanel({ open: true, date, events: evts });
+  }, []);
+
+  const handleSelectEvent = useCallback((event: CalendarEvent) => {
+    const date = event.start as Date;
+    // Show all events for this day
+    const dayEvents = events.filter(e => {
+      const d = e.start as Date;
+      return d.toDateString() === date.toDateString();
+    });
+    setPanel({ open: true, date, events: dayEvents });
+  }, [events]);
+
+  const closePanel = useCallback(() => {
+    setPanel(prev => ({ ...prev, open: false }));
+  }, []);
+
+  const panelVariants = isMobile
+    ? {
+        hidden: { y: '100%', opacity: 0 },
+        visible: { y: 0, opacity: 1, transition: { type: 'spring', damping: 28, stiffness: 300 } },
+        exit: { y: '110%', opacity: 0, transition: { duration: 0.25 } },
+      }
+    : {
+        hidden: { scale: 0.93, opacity: 0, y: 20 },
+        visible: { scale: 1, opacity: 1, y: 0, transition: { type: 'spring', damping: 28, stiffness: 350 } },
+        exit: { scale: 0.93, opacity: 0, y: 20, transition: { duration: 0.2 } },
+      };
+
   return (
-    <div className="glass-panel rounded-2xl border border-white/10 overflow-hidden p-4 min-h-[600px]">
+    <div className="glass-panel rounded-2xl border border-white/10 overflow-hidden p-4 min-h-[600px] relative">
       <style>{`
-        /* Override react-big-calendar light theme for dark UI */
         .rbc-calendar { background: transparent; color: rgba(255,255,255,0.85); }
         .rbc-header { background: rgba(255,255,255,0.04); border-color: rgba(255,255,255,0.08); color: rgba(255,255,255,0.5); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; padding: 10px 0; }
         .rbc-month-view, .rbc-time-view, .rbc-agenda-view { border-color: rgba(255,255,255,0.08); }
@@ -79,12 +143,15 @@ export function CalendarView({ appointments }: CalendarViewProps) {
         .rbc-timeslot-group { border-color: rgba(255,255,255,0.06); }
         .rbc-time-gutter .rbc-label { color: rgba(255,255,255,0.3); font-size: 11px; }
         .rbc-allday-cell { background: rgba(255,255,255,0.02); }
-        .rbc-show-more { color: #a78bfa; font-size: 11px; }
+        .rbc-show-more { color: #a78bfa; font-size: 11px; font-weight: 700; cursor: pointer; padding: 2px 6px; border-radius: 6px; transition: background 0.15s; }
+        .rbc-show-more:hover { background: rgba(167,139,250,0.15); }
         .rbc-event:focus { outline: none; }
         .rbc-agenda-table { border-color: rgba(255,255,255,0.08); }
         .rbc-agenda-table thead { background: rgba(255,255,255,0.04); color: rgba(255,255,255,0.4); }
         .rbc-agenda-date-cell, .rbc-agenda-time-cell, .rbc-agenda-event-cell { border-color: rgba(255,255,255,0.06); color: rgba(255,255,255,0.7); }
+        .rbc-overlay { display: none !important; }
       `}</style>
+
       <Calendar
         localizer={localizer}
         events={events}
@@ -94,9 +161,160 @@ export function CalendarView({ appointments }: CalendarViewProps) {
         eventPropGetter={eventStyleGetter as any}
         views={['month', 'week', 'day', 'agenda']}
         defaultView="month"
-        popup
-        tooltipAccessor={(event: any) => `${event.title}\nStatus: ${event.status}`}
+        onShowMore={handleShowMore as any}
+        onSelectEvent={handleSelectEvent as any}
+        tooltipAccessor={null as any}
       />
+
+      {/* Overlay backdrop */}
+      <AnimatePresence>
+        {panel.open && (
+          <motion.div
+            key="backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
+            style={{ touchAction: 'none' }}
+            onClick={closePanel}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Premium Panel */}
+      <AnimatePresence>
+        {panel.open && panel.date && (
+          <motion.div
+            key="panel"
+            variants={panelVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            className={`fixed z-50 ${
+              isMobile
+                ? 'bottom-0 left-0 right-0 rounded-t-3xl max-h-[85vh]'
+                : 'top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md rounded-2xl'
+            }`}
+            style={{
+              background: 'rgba(10,6,25,0.96)',
+              backdropFilter: 'blur(40px) saturate(180%)',
+              border: '1px solid rgba(255,255,255,0.1)',
+              boxShadow: '0 25px 80px rgba(0,0,0,0.6), 0 0 120px rgba(124,58,237,0.08)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Drag handle (mobile) */}
+            {isMobile && (
+              <div className="flex justify-center pt-3 pb-1">
+                <div className="w-10 h-1 rounded-full bg-white/20" />
+              </div>
+            )}
+
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-white/8">
+              <div>
+                <p className="text-white/40 text-xs uppercase tracking-[0.15em] font-bold mb-0.5">Appointments</p>
+                <h3 className="text-white font-black text-lg">
+                  {moment(panel.date).format('dddd, MMMM D')}
+                </h3>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-white/40 font-semibold">
+                  {panel.events.length} booking{panel.events.length !== 1 ? 's' : ''}
+                </span>
+                <button
+                  onClick={closePanel}
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 transition-all"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Booking Cards */}
+            <div
+              className="overflow-y-auto px-4 py-4 space-y-3"
+              style={{ maxHeight: isMobile ? 'calc(85vh - 120px)' : '420px' }}
+            >
+              {panel.events.length === 0 ? (
+                <div className="text-center py-12 text-white/30 text-sm">No appointments for this day.</div>
+              ) : (
+                panel.events
+                  .sort((a, b) => (a.start as Date).getTime() - (b.start as Date).getTime())
+                  .map((event, i) => {
+                    const appt = event.appointmentData;
+                    const color = STATUS_COLOR[event.status] ?? '#a78bfa';
+                    const bg = STATUS_BG[event.status] ?? 'rgba(167,139,250,0.1)';
+                    const StatusIcon = STATUS_ICON[event.status] ?? Circle;
+                    return (
+                      <motion.div
+                        key={event.id}
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: i * 0.04 }}
+                        className="rounded-xl p-4 border flex items-start gap-3"
+                        style={{
+                          background: 'rgba(255,255,255,0.03)',
+                          borderColor: `${color}25`,
+                        }}
+                      >
+                        {/* Color accent */}
+                        <div
+                          className="mt-0.5 w-1.5 h-full min-h-[40px] rounded-full flex-shrink-0"
+                          style={{ backgroundColor: color }}
+                        />
+
+                        {/* Content */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-white font-bold text-sm truncate">{appt.name}</span>
+                            <span
+                              className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase border flex-shrink-0"
+                              style={{ color, backgroundColor: bg, borderColor: `${color}40` }}
+                            >
+                              <StatusIcon className="w-2.5 h-2.5" />
+                              {event.status}
+                            </span>
+                          </div>
+                          <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-white/40">
+                            <span className="flex items-center gap-1">
+                              <Clock className="w-3 h-3" />
+                              {moment(event.start as Date).format('h:mm A')}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <Scissors className="w-3 h-3" />
+                              {appt.service}
+                            </span>
+                            {appt.staffName && (
+                              <span className="flex items-center gap-1">
+                                <User className="w-3 h-3" />
+                                {appt.staffName}
+                              </span>
+                            )}
+                          </div>
+                          {appt.notes && (
+                            <p className="mt-1 text-white/25 text-xs italic truncate">{appt.notes}</p>
+                          )}
+                        </div>
+                      </motion.div>
+                    );
+                  })
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-4 border-t border-white/8">
+              <button
+                onClick={closePanel}
+                className="w-full py-2.5 rounded-xl text-sm font-bold text-white/50 border border-white/10 hover:border-white/20 hover:text-white/70 transition-all"
+              >
+                Close
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
