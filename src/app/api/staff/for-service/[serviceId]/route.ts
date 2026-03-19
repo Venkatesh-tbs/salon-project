@@ -3,9 +3,9 @@ import { db } from "@/firebase";
 import { ref, get, set } from "firebase/database";
 
 const DEFAULT_STAFF = [
-  { staffId: "stf_01", name: "Marcus", role: "Master Barber", services: ["svc_001", "svc_002", "svc_008"], isActive: true, totalBookings: 120, rating: 4.9, avatar: "" },
-  { staffId: "stf_02", name: "Elena", role: "Senior Stylist", services: ["svc_003", "svc_004", "svc_007"], isActive: true, totalBookings: 85, rating: 4.8, avatar: "" },
-  { staffId: "stf_03", name: "David", role: "Coloring Expert", services: ["svc_002", "svc_005"], isActive: true, totalBookings: 92, rating: 4.9, avatar: "" }
+  { staffId: "stf_01", name: "Hari", email: "hari@salon.com", role: "Master Barber", services: ["svc_001", "svc_002", "svc_008"], isActive: true, totalBookings: 120, rating: 4.9, avatar: "" },
+  { staffId: "stf_02", name: "Elena", email: "elena@salon.com", role: "Senior Stylist", services: ["svc_003", "svc_004", "svc_007"], isActive: true, totalBookings: 85, rating: 4.8, avatar: "" },
+  { staffId: "stf_03", name: "David", email: "david@salon.com", role: "Coloring Expert", services: ["svc_002", "svc_005"], isActive: true, totalBookings: 92, rating: 4.9, avatar: "" }
 ];
 
 export async function GET(req: Request, { params }: { params: Promise<{ serviceId: string }> }) {

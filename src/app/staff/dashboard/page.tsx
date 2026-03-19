@@ -40,9 +40,11 @@ export default function StaffDashboardPage() {
       snap.forEach((child) => {
         all.push({ id: child.key!, ...child.val() });
       });
-      // Filter today's appointments — staff see all today's (in real app filter by staffId)
+      // Filter today's appointments and ensure staff only see their own assigned bookings
+      const staffEmailVal = decodeURIComponent(staffEmail || '').toLowerCase();
+      
       const todayAppts = all
-        .filter((a) => a.date === today && a.status !== 'cancelled')
+        .filter((a) => a.date === today && a.status !== 'cancelled' && (a.staffEmail?.toLowerCase() === staffEmailVal || staffEmailVal === 'admin@salon.com'))
         .sort((a, b) => a.time.localeCompare(b.time));
       setAppointments(todayAppts);
       setLoading(false);

@@ -406,6 +406,7 @@ export function AppointmentForm({ initialData, onSuccess }: AppointmentFormProps
       serviceDuration: svcObj?.duration || 45,
       staffId: values.staff || '',
       staffName: staffObj?.name || 'Unassigned',
+      staffEmail: staffObj?.email || '',
       date: values.date,
       time: values.time,
       notes: values.notes || '',

@@ -25,6 +25,7 @@ export interface Appointment {
   serviceDuration?: number;
   staffId?: string;
   staffName?: string;
+  staffEmail?: string;
   date: string;
   time: string;
   notes?: string;
