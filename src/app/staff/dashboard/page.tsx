@@ -28,28 +28,54 @@ export default function StaffDashboardPage() {
 
   useEffect(() => {
     // Get the staff's email from cookie to identify who's logged in
-    const staffEmail = document.cookie
+    const rawEmail = document.cookie
       .split('; ')
       .find((r) => r.startsWith('session_email='))
       ?.split('=')[1];
 
-    const apptRef = ref(db, 'appointments');
-    const listener = onValue(apptRef, (snap) => {
-      if (!snap.exists()) { setAppointments([]); setLoading(false); return; }
-      const all: Appointment[] = [];
-      snap.forEach((child) => {
-        all.push({ id: child.key!, ...child.val() });
+    const staffEmailVal = decodeURIComponent(rawEmail || '').toLowerCase();
+
+    // First, look up the staffId that maps to this email from the staff node
+    const staffRef = ref(db, 'staff');
+    let resolvedStaffId: string | null = null;
+
+    const staffListener = onValue(staffRef, (staffSnap) => {
+      if (staffSnap.exists()) {
+        staffSnap.forEach((child) => {
+          const member = child.val();
+          if (member.email?.toLowerCase() === staffEmailVal) {
+            resolvedStaffId = member.staffId || child.key;
+          }
+        });
+      }
+
+      // Now subscribe to appointments and filter by staffId OR staffEmail
+      const apptRef = ref(db, 'appointments');
+      const listener = onValue(apptRef, (snap) => {
+        if (!snap.exists()) { setAppointments([]); setLoading(false); return; }
+        const all: Appointment[] = [];
+        snap.forEach((child) => {
+          all.push({ id: child.key!, ...child.val() });
+        });
+
+        const todayAppts = all
+          .filter((a) => {
+            if (a.date !== today || a.status === 'cancelled') return false;
+            // Match by staffEmail (new bookings) OR staffId (old bookings without staffEmail)
+            const emailMatch = a.staffEmail?.toLowerCase() === staffEmailVal;
+            const idMatch = resolvedStaffId && a.staffId === resolvedStaffId;
+            return emailMatch || idMatch;
+          })
+          .sort((a, b) => a.time.localeCompare(b.time));
+
+        setAppointments(todayAppts);
+        setLoading(false);
       });
-      // Filter today's appointments and ensure staff only see their own assigned bookings
-      const staffEmailVal = decodeURIComponent(staffEmail || '').toLowerCase();
-      
-      const todayAppts = all
-        .filter((a) => a.date === today && a.status !== 'cancelled' && (a.staffEmail?.toLowerCase() === staffEmailVal || staffEmailVal === 'admin@salon.com'))
-        .sort((a, b) => a.time.localeCompare(b.time));
-      setAppointments(todayAppts);
-      setLoading(false);
+
+      return () => off(ref(db, 'appointments'), 'value', listener);
     });
-    return () => off(apptRef, 'value', listener);
+
+    return () => off(staffRef, 'value', staffListener);
   }, [today]);
 
   const markComplete = async (id: string) => {
