@@ -370,9 +370,9 @@ export function CalendarView({ appointments }: CalendarViewProps) {
 
           /* EVENT SLOTS */
           .rbc-row-segment { padding: 1px 3px; }
-          .rbc-event { background: transparent !important; border: none !important; padding: 0 !important; box-shadow: none !important; border-radius: 8px !important; box-sizing: border-box !important; overflow: visible !important; }
+          .rbc-event { background: transparent !important; border: none !important; padding: 0 !important; box-shadow: none !important; border-radius: 8px !important; box-sizing: border-box !important; }
           .rbc-event:focus { outline: none; }
-          .rbc-event-content { overflow: visible !important; height: auto !important; }
+          .rbc-event-content { overflow: hidden; height: 100%; }
           .rbc-time-view .rbc-event-label { display: none !important; }
 
           /* SHOW MORE LINK */
@@ -407,10 +407,10 @@ export function CalendarView({ appointments }: CalendarViewProps) {
           .rbc-toolbar-label { color: rgba(255,255,255,0.9); font-weight: 700; font-size: 15px; letter-spacing: -0.01em; }
 
           /* WEEK / DAY TIMELINE  */
-          .rbc-time-view { border: 1px solid rgba(255,255,255,0.07) !important; border-radius: 12px; overflow: visible; }
+          .rbc-time-view { border: 1px solid rgba(255,255,255,0.07) !important; border-radius: 12px; overflow: hidden; }
           .rbc-time-header { border-color: rgba(255,255,255,0.07) !important; }
           .rbc-time-header-content { border-color: rgba(255,255,255,0.07) !important; }
-          .rbc-time-content { border-color: rgba(255,255,255,0.07) !important; overflow: visible !important; }
+          .rbc-time-content { border-color: rgba(255,255,255,0.07) !important; }
           .rbc-timeslot-group { border-color: rgba(255,255,255,0.04) !important; min-height: 80px !important; }
           .rbc-time-slot { border-color: rgba(255,255,255,0.03) !important; }
           .rbc-day-bg.rbc-today { background: linear-gradient(to bottom, rgba(167, 139, 250, 0.08), rgba(167, 139, 250, 0.01)) !important; }
