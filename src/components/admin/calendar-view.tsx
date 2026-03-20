@@ -232,19 +232,20 @@ const STATUS_LABEL: Record<string, string> = {
 
 function CustomAgendaView({ events, onSelectEvent }: { events: CalendarEvent[]; onSelectEvent: (e: CalendarEvent) => void }) {
   const now = new Date();
-  const future = events
-    .filter(e => (e.end as Date) >= now)
+  // Show all appointments from start of today onwards
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+  const upcoming = events
+    .filter(e => (e.start as Date) >= startOfToday)
     .sort((a, b) => (a.start as Date).getTime() - (b.start as Date).getTime());
 
-  // Group by date string
   const grouped: Record<string, CalendarEvent[]> = {};
-  for (const ev of future) {
+  for (const ev of upcoming) {
     const key = (ev.start as Date).toDateString();
     if (!grouped[key]) grouped[key] = [];
     grouped[key].push(ev);
   }
 
-  if (future.length === 0) {
+  if (upcoming.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-4">
         <CalendarDays className="w-12 h-12 text-white/15" />
@@ -359,9 +360,9 @@ export function CalendarView({ appointments }: CalendarViewProps) {
     return () => window.removeEventListener('resize', check);
   }, []);
 
-  const events = useMemo<CalendarEvent[]>(() => {
+  const allEvents = useMemo<CalendarEvent[]>(() => {
     return appointments
-      .filter(a => a.date && a.time && a.name && a.service && (a.status !== 'cancelled'))
+      .filter(a => a.date && a.time && a.name && a.service)
       .map(a => {
         const [year, month, day] = a.date.split('-').map(Number);
         const [hour, minute] = a.time.split(':').map(Number);
@@ -377,6 +378,10 @@ export function CalendarView({ appointments }: CalendarViewProps) {
         };
       });
   }, [appointments]);
+
+  const events = useMemo<CalendarEvent[]>(() => {
+    return allEvents.filter(e => e.status !== 'cancelled');
+  }, [allEvents]);
 
   const displayEvents = useMemo(() => {
     if (view === Views.MONTH || view === Views.AGENDA) return events;
@@ -454,7 +459,7 @@ export function CalendarView({ appointments }: CalendarViewProps) {
   return (
     <>
       {/* ── Calendar Card ── */}
-      <div className="rounded-2xl border border-white/10 overflow-hidden p-4 min-h-[620px]" style={{ background: 'rgba(255,255,255,0.02)' }}>
+      <div className="relative rounded-2xl border border-white/10 p-4 min-h-[620px]" style={{ background: 'rgba(255,255,255,0.02)' }}>
         <style>{`
           /* Base reset */
           .rbc-calendar { background: transparent; color: rgba(255,255,255,0.85); font-family: inherit; }
@@ -537,8 +542,6 @@ export function CalendarView({ appointments }: CalendarViewProps) {
           .rbc-current-time-indicator { background: #a78bfa; height: 2px; box-shadow: 0 0 12px #a78bfa; }
           .rbc-day-slot .rbc-time-slot { border-color: rgba(255,255,255,0.03) !important; }
           .rbc-day-slot .rbc-event { 
-            width: calc(100% - 12px) !important;
-            margin: 0 6px !important;
             z-index: 10;
           }
           .rbc-allday-cell { background: rgba(255,255,255,0.01); border-color: rgba(255,255,255,0.07) !important; }
@@ -580,8 +583,8 @@ export function CalendarView({ appointments }: CalendarViewProps) {
         />
         {/* Custom Agenda overlay */}
         {view === Views.AGENDA && (
-          <div className="absolute inset-0 pt-14 px-1 overflow-y-auto">
-            <CustomAgendaView events={events} onSelectEvent={handleSelectEvent} />
+          <div className="mt-2 overflow-y-auto max-h-[560px] px-1">
+            <CustomAgendaView events={allEvents} onSelectEvent={handleSelectEvent} />
           </div>
         )}
       </div>
