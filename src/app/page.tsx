@@ -49,7 +49,7 @@ export default function Home() {
 
   const navLinks = [
     { name: 'Services', href: '#services' },
-    { name: 'Gallery', href: '#gallery' },
+    { name: 'Book Now', href: '#book' },
     { name: 'About', href: '#about' }, // Assuming these sections exist or will be added
     { name: 'Contact', href: '#contact' },
   ];
@@ -243,7 +243,7 @@ export default function Home() {
         </Section>
 
         {/* ── Booking Section ── */}
-        <div ref={bookingRef} id="booking">
+        <div ref={bookingRef} id="book">
           <Section className="py-20 md:py-32 px-4 md:px-6">
             <div className="max-w-3xl mx-auto relative">
               <div className="absolute -inset-10 bg-fuchsia-500/10 blur-[120px] rounded-full pointer-events-none" />
