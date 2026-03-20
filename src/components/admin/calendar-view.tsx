@@ -645,12 +645,16 @@ export function CalendarView({ appointments }: CalendarViewProps) {
           .rbc-toolbar-label { color: rgba(255,255,255,0.9); font-weight: 700; font-size: 15px; letter-spacing: -0.01em; }
 
           /* WEEK / DAY TIMELINE  */
-          .rbc-time-view { border: 1px solid rgba(255,255,255,0.07) !important; border-radius: 12px; overflow: hidden; }
-          .rbc-time-header { border-color: rgba(255,255,255,0.07) !important; }
+          .rbc-time-view { border: 1px solid rgba(255,255,255,0.07) !important; border-radius: 12px; overflow: hidden; background: transparent !important; }
+          .rbc-time-header { border-color: rgba(255,255,255,0.07) !important; background: transparent !important; }
           .rbc-time-header-content { border-color: rgba(255,255,255,0.07) !important; }
+          .rbc-time-header-cell { padding: 12px 0; color: #a78bfa; font-weight: 800; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; background: rgba(0,0,0,0.15); border-left: 1px solid rgba(255,255,255,0.07); }
+          .rbc-time-header-gutter { background: transparent !important; border-color: rgba(255,255,255,0.07) !important; }
           .rbc-time-content { border-color: rgba(255,255,255,0.07) !important; }
+          .rbc-time-column { border-color: rgba(255,255,255,0.07) !important; }
           .rbc-timeslot-group { border-color: rgba(255,255,255,0.04) !important; min-height: 80px !important; }
           .rbc-time-slot { border-color: rgba(255,255,255,0.03) !important; }
+          .rbc-time-gutter { background: transparent !important; border-color: rgba(255,255,255,0.07) !important; }
           .rbc-day-bg.rbc-today { background: linear-gradient(to bottom, rgba(167, 139, 250, 0.08), rgba(167, 139, 250, 0.01)) !important; }
           .rbc-time-gutter .rbc-label { color: rgba(255,255,255,0.45); font-size: 11px; font-weight: 700; letter-spacing: 0.05em; padding-right: 14px; }
           .rbc-current-time-indicator { background: #a78bfa; height: 2px; box-shadow: 0 0 12px #a78bfa; }
@@ -709,8 +713,8 @@ export function CalendarView({ appointments }: CalendarViewProps) {
             
             // Resources for Day View (Staff Columns)
             resources={resources.length > 0 ? resources : undefined}
-            resourceIdAccessor="resourceId"
-            resourceTitleAccessor="resourceTitle"
+            resourceIdAccessor={(r: any) => r.resourceId}
+            resourceTitleAccessor={(r: any) => r.resourceTitle}
             
             // Drag and Drop props
             draggableAccessor={isDraggableAuth as any}
