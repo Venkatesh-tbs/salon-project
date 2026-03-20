@@ -225,6 +225,125 @@ function WeekEventCard({ event }: { event: any }) {
     </div>
   );
 }
+// ─── Custom Agenda View ─────────────────────────────────
+const STATUS_LABEL: Record<string, string> = {
+  pending: 'Pending', confirmed: 'Confirmed', completed: 'Completed', cancelled: 'Cancelled'
+};
+
+function CustomAgendaView({ events, onSelectEvent }: { events: CalendarEvent[]; onSelectEvent: (e: CalendarEvent) => void }) {
+  const now = new Date();
+  const future = events
+    .filter(e => (e.end as Date) >= now)
+    .sort((a, b) => (a.start as Date).getTime() - (b.start as Date).getTime());
+
+  // Group by date string
+  const grouped: Record<string, CalendarEvent[]> = {};
+  for (const ev of future) {
+    const key = (ev.start as Date).toDateString();
+    if (!grouped[key]) grouped[key] = [];
+    grouped[key].push(ev);
+  }
+
+  if (future.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 gap-4">
+        <CalendarDays className="w-12 h-12 text-white/15" />
+        <p className="text-white/30 text-sm font-medium">No upcoming bookings</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-6 py-2">
+      {Object.entries(grouped).map(([dateStr, dayEvents]) => {
+        const date = new Date(dateStr);
+        const isToday = date.toDateString() === now.toDateString();
+        const dayLabel = isToday
+          ? 'Today'
+          : date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+
+        return (
+          <div key={dateStr}>
+            {/* Date header */}
+            <div className="flex items-center gap-3 mb-3">
+              <div
+                className="px-3 py-1 rounded-lg text-xs font-black tracking-wider uppercase"
+                style={{
+                  background: isToday ? 'rgba(139,92,246,0.25)' : 'rgba(255,255,255,0.06)',
+                  color: isToday ? '#c084fc' : 'rgba(255,255,255,0.45)',
+                  border: isToday ? '1px solid rgba(139,92,246,0.4)' : '1px solid rgba(255,255,255,0.08)',
+                }}
+              >
+                {dayLabel}
+              </div>
+              <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.06)' }} />
+              <span className="text-xs text-white/25 font-medium">{dayEvents.length} booking{dayEvents.length !== 1 ? 's' : ''}</span>
+            </div>
+
+            {/* Booking cards */}
+            <div className="flex flex-col gap-2">
+              {dayEvents.map(ev => {
+                const appt = ev.appointmentData;
+                const color = STATUS_COLOR[ev.status] ?? '#a78bfa';
+                const Icon = STATUS_ICON[ev.status] ?? Circle;
+                const startTime = (ev.start as Date).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+                const endTime = (ev.end as Date).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+
+                return (
+                  <div
+                    key={ev.id}
+                    onClick={() => onSelectEvent(ev)}
+                    className="group flex items-center gap-4 rounded-xl px-4 py-3.5 cursor-pointer transition-all duration-200 hover:-translate-y-0.5"
+                    style={{
+                      background: `${color}12`,
+                      border: `1px solid ${color}28`,
+                      boxShadow: '0 2px 12px rgba(0,0,0,0.15)',
+                    }}
+                    onMouseEnter={e => {
+                      (e.currentTarget as HTMLElement).style.background = `${color}20`;
+                      (e.currentTarget as HTMLElement).style.boxShadow = `0 8px 24px ${color}28`;
+                    }}
+                    onMouseLeave={e => {
+                      (e.currentTarget as HTMLElement).style.background = `${color}12`;
+                      (e.currentTarget as HTMLElement).style.boxShadow = '0 2px 12px rgba(0,0,0,0.15)';
+                    }}
+                  >
+                    {/* Time column */}
+                    <div className="flex flex-col items-center justify-center w-16 flex-shrink-0">
+                      <span className="text-[13px] font-black text-white/90">{startTime}</span>
+                      <span className="text-[10px] text-white/30 font-medium">{endTime}</span>
+                    </div>
+
+                    {/* Divider */}
+                    <div className="w-px h-10 flex-shrink-0 rounded-full" style={{ background: `${color}50` }} />
+
+                    {/* Info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="font-black text-white text-[14px] leading-tight truncate mb-1">{appt.name}</div>
+                      <div className="flex items-center gap-1.5 text-[11px] text-white/50">
+                        <Scissors className="w-3 h-3 flex-shrink-0" />
+                        <span className="truncate">{appt.service}</span>
+                      </div>
+                    </div>
+
+                    {/* Status badge */}
+                    <div
+                      className="flex items-center gap-1.5 px-2.5 py-1 rounded-full flex-shrink-0 text-[10px] font-bold uppercase tracking-wider"
+                      style={{ background: `${color}20`, color, border: `1px solid ${color}40` }}
+                    >
+                      <Icon className="w-3 h-3" />
+                      {STATUS_LABEL[ev.status] ?? ev.status}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 // ─── Main Component ─────────────────────────────────────────
 export function CalendarView({ appointments }: CalendarViewProps) {
@@ -420,29 +539,15 @@ export function CalendarView({ appointments }: CalendarViewProps) {
           .rbc-day-slot .rbc-event { 
             width: calc(100% - 12px) !important;
             margin: 0 6px !important;
-            overflow: visible !important;
             z-index: 10;
-            min-height: 80px !important;
           }
           .rbc-allday-cell { background: rgba(255,255,255,0.01); border-color: rgba(255,255,255,0.07) !important; }
           .rbc-time-view .rbc-header { border-color: rgba(255,255,255,0.07) !important; }
 
-          /* AGENDA VIEW */
-          .rbc-agenda-view { border: 1px solid rgba(255,255,255,0.07) !important; border-radius: 12px; overflow: hidden; }
-          .rbc-agenda-table { border-color: rgba(255,255,255,0.06) !important; width: 100%; }
-          .rbc-agenda-table thead { background: rgba(255,255,255,0.03); }
-          .rbc-agenda-table thead th { color: rgba(255,255,255,0.35) !important; font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 700; padding: 10px 12px; }
-          .rbc-agenda-date-cell, .rbc-agenda-time-cell, .rbc-agenda-event-cell {
-            border-color: rgba(255,255,255,0.05) !important;
-            color: rgba(255,255,255,0.65) !important;
-            font-size: 13px;
-            padding: 10px 12px !important;
-            vertical-align: middle;
-          }
-          .rbc-agenda-row:hover td { background: rgba(255,255,255,0.02); }
-
           /* Hide default popup */
           .rbc-overlay { display: none !important; }
+          /* Agenda: hide default since we render custom */
+          .rbc-agenda-view { display: none !important; }
         `}</style>
 
         <Calendar
@@ -462,6 +567,7 @@ export function CalendarView({ appointments }: CalendarViewProps) {
           onSelectSlot={handleSelectSlot as any}
           selectable
           dayLayoutAlgorithm={'no-overlap'}
+          timeslots={1}
           scrollToTime={new Date(2000, 1, 1, 8, 0, 0)}
           formats={{ eventTimeRangeFormat: () => '' }}
           tooltipAccessor={null as any}
@@ -472,6 +578,12 @@ export function CalendarView({ appointments }: CalendarViewProps) {
             day:   { event: ({ event }) => <WeekEventCard event={event as CalendarEvent} /> },
           }}
         />
+        {/* Custom Agenda overlay */}
+        {view === Views.AGENDA && (
+          <div className="absolute inset-0 pt-14 px-1 overflow-y-auto">
+            <CustomAgendaView events={events} onSelectEvent={handleSelectEvent} />
+          </div>
+        )}
       </div>
 
       {/* ── BACKDROP ── */}
