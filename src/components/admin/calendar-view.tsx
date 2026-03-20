@@ -411,7 +411,7 @@ export function CalendarView({ appointments }: CalendarViewProps) {
           .rbc-time-header { border-color: rgba(255,255,255,0.07) !important; }
           .rbc-time-header-content { border-color: rgba(255,255,255,0.07) !important; }
           .rbc-time-content { border-color: rgba(255,255,255,0.07) !important; overflow: visible !important; }
-          .rbc-timeslot-group { border-color: rgba(255,255,255,0.04) !important; min-height: 100px !important; }
+          .rbc-timeslot-group { border-color: rgba(255,255,255,0.04) !important; min-height: 120px !important; }
           .rbc-time-slot { border-color: rgba(255,255,255,0.03) !important; }
           .rbc-day-bg.rbc-today { background: linear-gradient(to bottom, rgba(167, 139, 250, 0.08), rgba(167, 139, 250, 0.01)) !important; }
           .rbc-time-gutter .rbc-label { color: rgba(255,255,255,0.45); font-size: 11px; font-weight: 700; letter-spacing: 0.05em; padding-right: 14px; }
@@ -422,6 +422,7 @@ export function CalendarView({ appointments }: CalendarViewProps) {
             margin: 0 6px !important;
             overflow: visible !important;
             z-index: 10;
+            min-height: 80px !important;
           }
           .rbc-allday-cell { background: rgba(255,255,255,0.01); border-color: rgba(255,255,255,0.07) !important; }
           .rbc-time-view .rbc-header { border-color: rgba(255,255,255,0.07) !important; }
@@ -461,6 +462,8 @@ export function CalendarView({ appointments }: CalendarViewProps) {
           onSelectSlot={handleSelectSlot as any}
           selectable
           dayLayoutAlgorithm={'no-overlap'}
+          step={60}
+          timeslots={1}
           formats={{ eventTimeRangeFormat: () => '' }}
           tooltipAccessor={null as any}
           messages={{ showMore: (count: number) => `+${count} bookings` }}
