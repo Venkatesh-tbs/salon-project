@@ -1,23 +1,11 @@
 'use client';
 
-import { useState, useEffect } from "react";
-import { Appointment, subscribeToAppointments } from "@/firebase/db";
-import { db } from "@/firebase";
+import { useAdminData } from "@/components/admin/AdminDataProvider";
 import { AppointmentsTable } from "@/components/admin/appointments-table";
 import { CalendarView } from "@/components/admin/calendar-view";
 
 export default function AdminBookingsPage() {
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  // Real-time RTDB subscription
-  useEffect(() => {
-    const unsubscribe = subscribeToAppointments(db, (data) => {
-      setAppointments(data);
-      setLoading(false);
-    });
-    return unsubscribe;
-  }, []);
+  const { appointments, loadingAppointments: loading } = useAdminData();
 
   return (
     <div className="space-y-8">

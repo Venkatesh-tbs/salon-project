@@ -1,20 +1,28 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useState, useMemo } from "react";
 import { motion } from "framer-motion";
-import { crmService } from "@/services/api";
+import { useAdminData } from "@/components/admin/AdminDataProvider";
 
 type Client = { clientId: string, name: string, phoneNumber?: string, phone?: string, isVIP: boolean, totalVisits: number, lastVisit?: string, lastVisitDate?: string, totalSpent?: number, loyaltyPoints?: number };
 
 export const CRMTable: React.FC = () => {
-  const [clients, setClients]   = useState<Client[]>([]);
-  const [loading, setLoading]   = useState(true);
+  const { clients: rawClients, loadingClients: loading } = useAdminData();
   const [search, setSearch]     = useState("");
   const [filter, setFilter]     = useState<"all" | "vip">("all");
 
-  useEffect(() => {
-    crmService.getAll().then(setClients).finally(() => setLoading(false));
-  }, []);
+  const clients: Client[] = useMemo(() => {
+    return rawClients.map(c => ({
+      clientId: c.id || c.phone,
+      name: c.name,
+      phone: c.phone,
+      isVIP: c.totalVisits >= 5,
+      totalVisits: c.totalVisits,
+      lastVisitDate: c.lastVisitDate,
+      totalSpent: c.totalSpent,
+      loyaltyPoints: c.loyaltyPoints,
+    }));
+  }, [rawClients]);
 
   const filtered = clients.filter((c) => {
     const matchSearch = search

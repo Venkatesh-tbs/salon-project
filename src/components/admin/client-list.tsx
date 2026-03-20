@@ -1,22 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { Client, subscribeToClients } from '@/firebase/db';
-import { db } from '@/firebase';
+import { useAdminData } from '@/components/admin/AdminDataProvider';
 import { Users, Phone, Calendar, Award, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 
 export function ClientList() {
-  const [clients, setClients] = useState<Client[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const unsubscribe = subscribeToClients(db, (data) => {
-      setClients(data);
-      setLoading(false);
-    });
-    return unsubscribe;
-  }, []);
+  const { clients, loadingClients: loading } = useAdminData();
 
   if (loading) {
     return (

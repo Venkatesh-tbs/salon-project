@@ -103,7 +103,7 @@ export function AppointmentsTable({ appointments, isLoading = false, staffView =
         const clientRef = dbRef(db, `clients/${phoneId}`);
         const snap = await get(clientRef);
         const client = snap.exists() ? snap.val() : { loyaltyPoints: 0, totalVisits: 0, totalSpent: 0 };
-        const price = Number(appointment.servicePrice) || 0;
+        const price = Number(appointment.servicePrice) || Number((appointment as any).totalAmount) || 0;
         await dbUpdate(clientRef, {
           name: appointment.name,
           phone: e164,

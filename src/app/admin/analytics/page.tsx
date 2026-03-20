@@ -1,22 +1,12 @@
 'use client';
 
-import { useState, useEffect } from "react";
-import { Appointment, subscribeToAppointments } from "@/firebase/db";
-import { db } from "@/firebase";
+import { useAdminData } from "@/components/admin/AdminDataProvider";
 import { RevenueDashboard } from "@/components/admin/RevenueDashboard";
 import { StaffAnalytics } from "@/components/admin/StaffAnalytics";
 import { CRMTable } from "@/components/admin/CRMTable";
 
 export default function AdminAnalyticsPage() {
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
-
-  // Real-time RTDB subscription
-  useEffect(() => {
-    const unsubscribe = subscribeToAppointments(db, (data) => {
-      setAppointments(data);
-    });
-    return unsubscribe;
-  }, []);
+  const { appointments } = useAdminData();
 
   return (
     <div className="space-y-8">

@@ -1,8 +1,6 @@
 'use client';
 
-import { Suspense, useEffect, useState } from "react";
-import { Appointment, subscribeToAppointments } from "@/firebase/db";
-import { db } from "@/firebase";
+import { useAdminData } from "@/components/admin/AdminDataProvider";
 
 import { StatCards } from "@/components/admin/stat-cards";
 import { AiSummaryCard } from "@/components/admin/ai-summary-card";
@@ -11,17 +9,7 @@ import { ActivityTimeline } from "@/components/admin/activity-timeline";
 import { RecentClients } from "@/components/admin/recent-clients";
 
 export default function AdminDashboardPage() {
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  // Real-time RTDB subscription
-  useEffect(() => {
-    const unsubscribe = subscribeToAppointments(db, (data) => {
-      setAppointments(data);
-      setLoading(false);
-    });
-    return unsubscribe;
-  }, []);
+  const { appointments, loadingAppointments: loading } = useAdminData();
 
   return (
     <div className="space-y-8">

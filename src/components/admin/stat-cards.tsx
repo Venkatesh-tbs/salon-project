@@ -9,8 +9,8 @@ interface StatCardsProps {
 export function StatCards({ appointments }: StatCardsProps) {
   const todayStr = new Date().toISOString().split("T")[0];
 
-  const todaysBookings = appointments.filter(a => a.date === todayStr).length;
-  const totalBookings = appointments.length;
+  const todaysBookings = appointments.filter(a => a.date === todayStr && a.status === 'completed').length;
+  const totalBookings = appointments.filter(a => a.status === 'completed').length;
   const pendingCount = appointments.filter(a => a.status === 'pending' || a.status === 'confirmed').length;
   const completedCount = appointments.filter(a => a.status === 'completed').length;
 

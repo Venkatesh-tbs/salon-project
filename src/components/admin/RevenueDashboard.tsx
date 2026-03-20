@@ -1,12 +1,12 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { motion } from "framer-motion";
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis,
   Tooltip, ResponsiveContainer, PieChart, Pie, Cell,
 } from "recharts";
-import { revenueService } from "@/services/api";
+import { useAdminData } from "@/components/admin/AdminDataProvider";
 
 type RevenueStats = {
   todayRevenue: number;
@@ -68,15 +68,100 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 export const RevenueDashboard: React.FC = () => {
-  const [stats, setStats]     = useState<RevenueStats | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { appointments, loadingAppointments: loading } = useAdminData();
 
-  useEffect(() => {
-    revenueService.getStats()
-      .then(setStats)
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  }, []);
+  const stats: RevenueStats = React.useMemo(() => {
+    const today = new Date().toISOString().split("T")[0];
+    const currentMonthPrefix = today.substring(0, 7);
+
+    // Initial state
+    const result: RevenueStats = {
+      todayRevenue: 0,
+      monthRevenue: 0,
+      totalBookings: 0,
+      completedBookings: 0,
+      cancelledBookings: 0,
+      peakHours: [],
+      revenueByDay: [],
+      bookingsByService: [],
+      topStaff: [],
+    };
+
+    const hourCount: Record<string, number> = {};
+    const serviceMap: Record<string, { count: number; revenue: number }> = {};
+    const staffMap: Record<string, { name: string; count: number; revenue: number }> = {};
+    const dailyMap: Record<string, { revenue: number; bookings: number }> = {};
+
+    // Get last 30 days for trend chart
+    const last30Days = Array.from({ length: 30 }, (_, i) => {
+      const d = new Date();
+      d.setDate(d.getDate() - (29 - i));
+      return d.toISOString().split("T")[0];
+    });
+
+    for (const date of last30Days) {
+      dailyMap[date] = { revenue: 0, bookings: 0 };
+    }
+
+    for (const a of appointments) {
+      const isToday = a.date === today;
+      const isThisMonth = a.date?.startsWith(currentMonthPrefix);
+      const status = a.status?.toLowerCase();
+
+      if (status === "completed") {
+         result.totalBookings++;
+         result.completedBookings++;
+        const price = Number(a.servicePrice) || Number((a as any).totalAmount) || 0;
+
+        if (isToday) result.todayRevenue += price;
+        if (isThisMonth) result.monthRevenue += price;
+
+        // Daily trend (all time or filtered by last30Days)
+        if (dailyMap[a.date]) {
+          dailyMap[a.date].revenue += price;
+          dailyMap[a.date].bookings++;
+        }
+
+        // Peak hours
+        const hr = a.time?.split(":")?.[0] || "00";
+        hourCount[hr] = (hourCount[hr] || 0) + 1;
+
+        // Services
+        const sn = a.service || "Unknown";
+        if (!serviceMap[sn]) serviceMap[sn] = { count: 0, revenue: 0 };
+        serviceMap[sn].count++;
+        serviceMap[sn].revenue += price;
+
+        // Staff
+        const sid = a.staffId || "unassigned";
+        if (!staffMap[sid]) staffMap[sid] = { name: a.staffName || "Unassigned", count: 0, revenue: 0 };
+        staffMap[sid].count++;
+        staffMap[sid].revenue += price;
+      } else if (a.status === "cancelled") {
+        result.cancelledBookings++;
+      }
+    }
+
+    // Format output arrays
+    result.peakHours = Object.entries(hourCount)
+      .map(([hour, count]) => ({ hour: `${hour}:00`, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+
+    result.revenueByDay = Object.entries(dailyMap)
+      .map(([date, v]) => ({ date, ...v }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+
+    result.bookingsByService = Object.entries(serviceMap)
+      .map(([serviceName, v]) => ({ serviceName, ...v }))
+      .sort((a, b) => b.count - a.count);
+
+    result.topStaff = Object.entries(staffMap)
+      .map(([staffId, v]) => ({ staffId, staffName: v.name, bookings: v.count, revenue: v.revenue }))
+      .sort((a, b) => b.revenue - a.revenue);
+
+    return result;
+  }, [appointments]);
 
   if (loading) return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">

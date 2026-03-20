@@ -61,7 +61,7 @@ export async function GET() {
       const isToday = a.date === today;
       const isThisMonth = a.date?.startsWith(currentMonthPrefix);
 
-      if (a.status === "confirmed" || a.status === "completed") {
+      if (a.status?.toLowerCase() === "completed") {
          const price = Number(a.servicePrice) || Number(a.totalAmount) || 0;
          
          if (isThisMonth) {
