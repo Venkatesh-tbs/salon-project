@@ -8,7 +8,7 @@ import withDragAndDrop from 'react-big-calendar/lib/addons/dragAndDrop';
 import 'react-big-calendar/lib/addons/dragAndDrop/styles.css';
 import { Appointment } from '@/firebase/db';
 import { db } from '@/firebase';
-import { ref, update } from 'firebase/database';
+import { ref, update, onValue, off } from 'firebase/database';
 import { useToast } from '@/hooks/use-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -358,6 +358,7 @@ export function CalendarView({ appointments }: CalendarViewProps) {
   const [panel, setPanel] = useState<PanelState>({ open: false, date: null, events: [] });
   const [view, setView] = useState<View>(Views.MONTH);
   const [isMobile, setIsMobile] = useState(false);
+  const [resources, setResources] = useState<any[]>([]);
   const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -365,6 +366,25 @@ export function CalendarView({ appointments }: CalendarViewProps) {
     check();
     window.addEventListener('resize', check);
     return () => window.removeEventListener('resize', check);
+  }, []);
+
+  useEffect(() => {
+    const staffRef = ref(db, 'staff');
+    const listener = onValue(staffRef, (snap) => {
+      const data = snap.val();
+      if (data) {
+        const r = Object.entries(data).map(([id, s]: any) => ({
+          resourceId: id,
+          resourceTitle: s.name,
+          email: s.email,
+        }));
+        r.push({ resourceId: 'unassigned', resourceTitle: 'Unassigned', email: '' });
+        setResources(r);
+      } else {
+        setResources([{ resourceId: 'unassigned', resourceTitle: 'Unassigned', email: '' }]);
+      }
+    });
+    return () => off(staffRef, 'value', listener);
   }, []);
 
   const allEvents = useMemo<CalendarEvent[]>(() => {
@@ -381,6 +401,7 @@ export function CalendarView({ appointments }: CalendarViewProps) {
           start,
           end,
           status: a.status,
+          resourceId: a.staffId || 'unassigned',
           appointmentData: a,
         };
       });
@@ -418,7 +439,7 @@ export function CalendarView({ appointments }: CalendarViewProps) {
     };
   }, [isDraggableAuth]);
 
-  const onEventDrop = useCallback(async ({ event, start, end }: any) => {
+  const onEventDrop = useCallback(async ({ event, start, end, resourceId }: any) => {
     if (!isDraggableAuth(event)) {
       toast({ title: "Not Allowed", description: "Completed or past bookings cannot be rescheduled.", variant: "destructive" });
       return;
@@ -430,14 +451,33 @@ export function CalendarView({ appointments }: CalendarViewProps) {
       return;
     }
 
-    const staffId = event.appointmentData.staffId;
+    let updatedStaffId = event.appointmentData.staffId || '';
+    let updatedStaffName = event.appointmentData.staffName || '';
+    let updatedStaffEmail = event.appointmentData.staffEmail || '';
 
-    // Check for overlap conflicts (same staff, active bookings)
+    // Handle drag across staff columns
+    if (resourceId && resourceId !== (event.appointmentData.staffId || 'unassigned')) {
+      if (resourceId === 'unassigned') {
+        updatedStaffId = '';
+        updatedStaffName = '';
+        updatedStaffEmail = '';
+      } else {
+        const staffRef = resources.find((r) => r.resourceId === resourceId);
+        if (staffRef) {
+          updatedStaffId = staffRef.resourceId;
+          updatedStaffName = staffRef.resourceTitle;
+          updatedStaffEmail = staffRef.email;
+        }
+      }
+    }
+
+    const targetStaffId = resourceId && resourceId !== 'unassigned' ? resourceId : updatedStaffId;
+
+    // Check for overlap conflicts
     const isConflict = allEvents.some((e) => {
       if (e.id === event.id) return false;
       if (['cancelled'].includes(e.status)) return false;
-      // If the target has a staff, check that they only collide with their own assigned bookings
-      if (staffId && e.appointmentData.staffId !== staffId) return false;
+      if (targetStaffId && e.appointmentData.staffId !== targetStaffId) return false;
 
       const eStart = e.start as Date;
       const eEnd = e.end as Date;
@@ -445,7 +485,7 @@ export function CalendarView({ appointments }: CalendarViewProps) {
     });
 
     if (isConflict) {
-      toast({ title: "Schedule Conflict", description: `This timeslot overlaps with another booking for ${event.appointmentData.staffName || 'this staff'}.`, variant: "destructive" });
+      toast({ title: "Schedule Conflict", description: `This timeslot overlaps with another booking for this staff member.`, variant: "destructive" });
       return;
     }
 
@@ -462,7 +502,10 @@ export function CalendarView({ appointments }: CalendarViewProps) {
     try {
       await update(ref(db, `appointments/${event.id}`), {
         date: dateStr,
-        time: timeStr
+        time: timeStr,
+        staffId: updatedStaffId,
+        staffName: updatedStaffName,
+        staffEmail: updatedStaffEmail,
       });
       toast({ title: "Booking Rescheduled", description: `Moved to ${dateStr} at ${timeStr}` });
     } catch (err) {
@@ -663,6 +706,11 @@ export function CalendarView({ appointments }: CalendarViewProps) {
             formats={{ eventTimeRangeFormat: () => '' }}
             tooltipAccessor={null as any}
             messages={{ showMore: (count: number) => `+${count} bookings` }}
+            
+            // Resources for Day View (Staff Columns)
+            resources={resources.length > 0 ? resources : undefined}
+            resourceIdAccessor="resourceId"
+            resourceTitleAccessor="resourceTitle"
             
             // Drag and Drop props
             draggableAccessor={isDraggableAuth as any}
