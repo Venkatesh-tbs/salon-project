@@ -4,7 +4,12 @@ import { useMemo, useState, useCallback, useEffect, useRef } from 'react';
 import { Calendar, momentLocalizer, Event, Views, View } from 'react-big-calendar';
 import moment from 'moment';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
+import withDragAndDrop from 'react-big-calendar/lib/addons/dragAndDrop';
+import 'react-big-calendar/lib/addons/dragAndDrop/styles.css';
 import { Appointment } from '@/firebase/db';
+import { db } from '@/firebase';
+import { ref, update } from 'firebase/database';
+import { useToast } from '@/hooks/use-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X, Clock, Scissors, User, Phone,
@@ -13,6 +18,7 @@ import {
 } from 'lucide-react';
 
 const localizer = momentLocalizer(moment);
+const DnDCalendar = withDragAndDrop(Calendar as any);
 
 // ─── Types ─────────────────────────────────────────────────
 interface CalendarViewProps { appointments: Appointment[]; }
@@ -348,6 +354,7 @@ function CustomAgendaView({ events, onSelectEvent }: { events: CalendarEvent[]; 
 
 // ─── Main Component ─────────────────────────────────────────
 export function CalendarView({ appointments }: CalendarViewProps) {
+  const { toast } = useToast();
   const [panel, setPanel] = useState<PanelState>({ open: false, date: null, events: [] });
   const [view, setView] = useState<View>(Views.MONTH);
   const [isMobile, setIsMobile] = useState(false);
@@ -393,12 +400,57 @@ export function CalendarView({ appointments }: CalendarViewProps) {
     return {
       style: {
         background: 'transparent',
-        border: 'none',
-        padding: '1px 2px',
-        color: color,
       },
     };
   }, []);
+
+  const onEventDrop = useCallback(async ({ event, start, end }: any) => {
+    const now = new Date();
+    if (start < now) {
+      toast({ title: "Invalid Reschedule", description: "Cannot move appointments to a past date/time.", variant: "destructive" });
+      return;
+    }
+
+    const staffId = event.appointmentData.staffId;
+
+    // Check for overlap conflicts (same staff, active bookings)
+    const isConflict = allEvents.some((e) => {
+      if (e.id === event.id) return false;
+      if (['cancelled'].includes(e.status)) return false;
+      // If the target has a staff, check that they only collide with their own assigned bookings
+      if (staffId && e.appointmentData.staffId !== staffId) return false;
+
+      const eStart = e.start as Date;
+      const eEnd = e.end as Date;
+      return Math.max(start.getTime(), eStart.getTime()) < Math.min(end.getTime(), eEnd.getTime());
+    });
+
+    if (isConflict) {
+      toast({ title: "Schedule Conflict", description: `This timeslot overlaps with another booking for ${event.appointmentData.staffName || 'this staff'}.`, variant: "destructive" });
+      return;
+    }
+
+    const dateStr = [
+      start.getFullYear(),
+      String(start.getMonth() + 1).padStart(2, '0'),
+      String(start.getDate()).padStart(2, '0'),
+    ].join('-');
+    const timeStr = [
+      String(start.getHours()).padStart(2, '0'),
+      String(start.getMinutes()).padStart(2, '0'),
+    ].join(':');
+
+    try {
+      await update(ref(db, `appointments/${event.id}`), {
+        date: dateStr,
+        time: timeStr
+      });
+      toast({ title: "Booking Rescheduled", description: `Moved to ${dateStr} at ${timeStr}` });
+    } catch (err) {
+      toast({ title: "Failed", description: "Could not persist reschedule.", variant: "destructive" });
+      console.error(err);
+    }
+  }, [allEvents, toast]);
 
   const openPanel = useCallback((date: Date, evts: CalendarEvent[]) => {
     setPanel({ open: true, date, events: evts });
@@ -551,10 +603,26 @@ export function CalendarView({ appointments }: CalendarViewProps) {
           .rbc-overlay { display: none !important; }
           /* Agenda: hide default since we render custom */
           .rbc-agenda-view { display: none !important; }
+
+          /* Drag and Drop styling */
+          .rbc-addons-dnd-resizable {
+            position: relative;
+            width: 100%;
+            height: 100%;
+          }
+          .rbc-addons-dnd-drag-preview {
+            opacity: 0.6;
+            transform: scale(0.98);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            transition: opacity 0.2s, transform 0.2s;
+            z-index: 100;
+          }
+          .rbc-addons-dnd-dragger { cursor: grab !important; }
+          .rbc-addons-dnd-dragger:active { cursor: grabbing !important; }
         `}</style>
 
         {view !== Views.AGENDA ? (
-          <Calendar
+          <DnDCalendar
             localizer={localizer}
             events={displayEvents}
             startAccessor="start"
@@ -576,6 +644,12 @@ export function CalendarView({ appointments }: CalendarViewProps) {
             formats={{ eventTimeRangeFormat: () => '' }}
             tooltipAccessor={null as any}
             messages={{ showMore: (count: number) => `+${count} bookings` }}
+            
+            // Drag and Drop props
+            draggableAccessor={() => true}
+            resizableAccessor={() => false}
+            onEventDrop={onEventDrop}
+
             components={{
               month: { event: ({ event }) => <EventCard event={event as CalendarEvent} /> },
               week:  { event: ({ event }) => <WeekEventCard event={event as CalendarEvent} /> },
