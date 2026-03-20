@@ -2,6 +2,7 @@ import { initializeApp, getApp, getApps, FirebaseApp } from 'firebase/app';
 import { getFirestore, Firestore } from 'firebase/firestore';
 import { getAuth, Auth } from 'firebase/auth';
 import { getDatabase, Database } from 'firebase/database';
+import { getStorage, FirebaseStorage } from 'firebase/storage';
 import { firebaseConfig } from './config';
 
 let app: FirebaseApp;
@@ -38,6 +39,14 @@ export const db = (() => {
     return getDatabase(a);
   }
   return getDatabase(getApp());
+})();
+
+export const storage = (() => {
+  if (getApps().length === 0) {
+    const a = initializeApp(firebaseConfig);
+    return getStorage(a);
+  }
+  return getStorage(getApp());
 })();
 
 export {
