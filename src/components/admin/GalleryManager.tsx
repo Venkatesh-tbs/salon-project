@@ -51,6 +51,15 @@ export function GalleryManager() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const selectedFile = e.target.files[0];
+      
+      // 1. Validate file type
+      const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
+      if (!validTypes.includes(selectedFile.type)) {
+        toast({ variant: "destructive", title: "Invalid File Type", description: "Only JPG, PNG, and WebP images are allowed." });
+        if (fileInputRef.current) fileInputRef.current.value = "";
+        return;
+      }
+
       setFile(selectedFile);
       setPreview(URL.createObjectURL(selectedFile));
     }
@@ -93,11 +102,21 @@ export function GalleryManager() {
       let finalUrl = newImage.imageUrl;
 
       if (uploadType === "file" && file) {
-        // Upload to Firebase Storage
+        console.log(`[GalleryUpload] Starting upload for file: ${file.name} (${file.type}, ${file.size} bytes)`);
         const fileExt = file.name.split('.').pop() || 'jpg';
         const imageRef = storageRef(storage, `gallery/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`);
-        const snapshot = await uploadBytes(imageRef, file);
-        finalUrl = await getDownloadURL(snapshot.ref);
+        
+        try {
+          console.log(`[GalleryUpload] Sending bytes to Firebase Storage path: ${imageRef.fullPath}`);
+          const snapshot = await uploadBytes(imageRef, file);
+          console.log(`[GalleryUpload] Bytes uploaded successfully. Bytes transferred: ${snapshot.metadata.size}`);
+          
+          finalUrl = await getDownloadURL(snapshot.ref);
+          console.log(`[GalleryUpload] Successfully retrieved download URL: ${finalUrl}`);
+        } catch (uploadError: any) {
+          console.error(`[GalleryUpload] Firebase Storage Upload Error:`, uploadError);
+          throw new Error(`Storage Error: ${uploadError.message || "Ensure Firebase Storage rules allow public or authenticated writes."}`);
+        }
       }
 
       if (!finalUrl) throw new Error("No image URL generated.");
