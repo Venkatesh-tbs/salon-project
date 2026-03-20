@@ -13,6 +13,7 @@ export async function GET() {
       .map(([id, data]: [string, any]) => ({
         clientId: id,
         ...data,
+        isVIP: data.isVIP === true || (data.totalSpent || 0) >= 2000 || (data.totalVisits || 0) >= 5,
       }))
       .filter((c) => c.isVIP === true);
     

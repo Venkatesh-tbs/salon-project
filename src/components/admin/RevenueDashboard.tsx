@@ -149,7 +149,12 @@ export const RevenueDashboard: React.FC = () => {
                 tickLine={false}
                 width={45}
               />
-              <Tooltip content={<CustomTooltip />} />
+              <Tooltip 
+                content={<CustomTooltip />} 
+                cursor={{ fill: 'rgba(255,255,255,0.02)' }}
+                wrapperStyle={{ outline: 'none' }}
+                contentStyle={{ backgroundColor: 'transparent', border: 'none', boxShadow: 'none' }}
+              />
               <Area
                 type="monotone"
                 dataKey="revenue"
@@ -178,7 +183,12 @@ export const RevenueDashboard: React.FC = () => {
                 tickLine={false}
                 width={25}
               />
-              <Tooltip content={<CustomTooltip />} />
+              <Tooltip 
+                content={<CustomTooltip />} 
+                cursor={{ fill: 'rgba(255,255,255,0.02)' }}
+                wrapperStyle={{ outline: 'none' }}
+                contentStyle={{ backgroundColor: 'transparent', border: 'none', boxShadow: 'none' }}
+              />
               <Bar dataKey="count" fill="#7c3aed" radius={[4, 4, 0, 0]}>
                 {stats.peakHours.map((_, i) => (
                   <Cell key={i} fill={i === 0 ? "#c026d3" : "#7c3aed"} />
@@ -212,7 +222,11 @@ export const RevenueDashboard: React.FC = () => {
                     <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip content={<CustomTooltip />} />
+                <Tooltip 
+                  content={<CustomTooltip />} 
+                  wrapperStyle={{ outline: 'none' }}
+                  contentStyle={{ backgroundColor: 'transparent', border: 'none', boxShadow: 'none' }}
+                />
               </PieChart>
             </ResponsiveContainer>
             <div className="flex-1 space-y-1.5">

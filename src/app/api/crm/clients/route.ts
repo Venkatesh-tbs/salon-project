@@ -12,6 +12,7 @@ export async function GET() {
     const clients = Object.entries(clientsData).map(([id, data]: [string, any]) => ({
       clientId: id,
       ...data,
+      isVIP: data.isVIP === true || (data.totalSpent || 0) >= 2000 || (data.totalVisits || 0) >= 5,
     }));
     
     // Sort by total visits desc

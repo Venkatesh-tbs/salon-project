@@ -44,37 +44,57 @@ export async function GET() {
     const staffMap: Record<string, { name: string; count: number; revenue: number }> = {};
     const dailyMap: Record<string, { revenue: number; bookings: number }> = {};
 
+    const currentMonthPrefix = today.substring(0, 7);
+
+    // Get an array of dates for the last 30 days to ensure continuous chart data
+    const last30Days = Array.from({ length: 30 }, (_, i) => {
+      const d = new Date();
+      d.setDate(d.getDate() - (29 - i));
+      return d.toISOString().split("T")[0];
+    });
+
+    for (const date of last30Days) {
+      dailyMap[date] = { revenue: 0, bookings: 0 };
+    }
+
     for (const a of allAppointments) {
       const isToday = a.date === today;
-      const isThisMonth = a.date >= monthStart;
+      const isThisMonth = a.date?.startsWith(currentMonthPrefix);
 
-      if (isThisMonth) {
-         totalBookings++;
-         if (a.status === "completed") {
-            monthRevenue += Number(a.totalAmount) || 0;
-            completedCount++;
+      if (a.status === "confirmed" || a.status === "completed") {
+         const price = Number(a.servicePrice) || Number(a.totalAmount) || 0;
+         
+         if (isThisMonth) {
+            monthRevenue += price;
+            totalBookings++;
+            if (a.status === "completed") completedCount++;
             
-            if (isToday) todayRevenue += Number(a.totalAmount) || 0;
-
-            const hr = a.time?.split(":")?.[0] || "00";
-            hourCount[hr] = (hourCount[hr] || 0) + 1;
-
-            const sn = a.service || "Unknown";
-            if (!serviceMap[sn]) serviceMap[sn] = { count: 0, revenue: 0 };
-            serviceMap[sn].count++;
-            serviceMap[sn].revenue += Number(a.totalAmount) || 0;
-
             const sid = a.staffId || "unassigned";
             if (!staffMap[sid]) staffMap[sid] = { name: a.staffName || "Unassigned", count: 0, revenue: 0 };
             staffMap[sid].count++;
-            staffMap[sid].revenue += Number(a.totalAmount) || 0;
-
-            if (!dailyMap[a.date]) dailyMap[a.date] = { revenue: 0, bookings: 0 };
-            dailyMap[a.date].revenue += Number(a.totalAmount) || 0;
-            dailyMap[a.date].bookings++;
-         } else if (a.status === "cancelled") {
-            cancelledCount++;
+            staffMap[sid].revenue += price;
          }
+         
+         if (isToday) todayRevenue += price;
+
+         if (dailyMap[a.date]) {
+            dailyMap[a.date].revenue += price;
+            dailyMap[a.date].bookings++;
+         } else if (a.date >= last30Days[0] && a.date <= last30Days[29]) {
+            dailyMap[a.date] = { revenue: price, bookings: 1 };
+         }
+
+         const hr = a.time?.split(":")?.[0] || "00";
+         hourCount[hr] = (hourCount[hr] || 0) + 1;
+
+         const sn = a.service || "Unknown";
+         if (!serviceMap[sn]) serviceMap[sn] = { count: 0, revenue: 0 };
+         serviceMap[sn].count++;
+         serviceMap[sn].revenue += price;
+
+      } else if (a.status === "cancelled" && isThisMonth) {
+         totalBookings++; // keep it in the total for cancel rate math
+         cancelledCount++;
       }
     }
 
