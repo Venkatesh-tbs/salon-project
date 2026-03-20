@@ -367,7 +367,7 @@ export function CalendarView({ appointments }: CalendarViewProps) {
         const [year, month, day] = a.date.split('-').map(Number);
         const [hour, minute] = a.time.split(':').map(Number);
         const start = new Date(year, month - 1, day, hour, minute);
-        const end = new Date(start.getTime() + (a.serviceDuration || 30) * 60_000);
+        const end = new Date(start.getTime() + Math.max(a.serviceDuration || 30, 30) * 60_000);
         return {
           id: a.id!,
           title: `${a.name} – ${a.service}`,
@@ -553,38 +553,61 @@ export function CalendarView({ appointments }: CalendarViewProps) {
           .rbc-agenda-view { display: none !important; }
         `}</style>
 
-        <Calendar
-          localizer={localizer}
-          events={displayEvents}
-          startAccessor="start"
-          endAccessor="end"
-          style={{ height: 600 }}
-          eventPropGetter={eventStyleGetter as any}
-          views={[Views.MONTH, Views.WEEK, Views.DAY, Views.AGENDA]}
-          view={view}
-          onView={setView}
-          defaultView={Views.MONTH}
-          onShowMore={handleShowMore as any}
-          onSelectEvent={handleSelectEvent as any}
-          onDrillDown={handleDrillDown}
-          onSelectSlot={handleSelectSlot as any}
-          selectable
-          dayLayoutAlgorithm={'no-overlap'}
-          timeslots={1}
-          scrollToTime={new Date(2000, 1, 1, 8, 0, 0)}
-          formats={{ eventTimeRangeFormat: () => '' }}
-          tooltipAccessor={null as any}
-          messages={{ showMore: (count: number) => `+${count} bookings` }}
-          components={{
-            month: { event: ({ event }) => <EventCard event={event as CalendarEvent} /> },
-            week:  { event: ({ event }) => <WeekEventCard event={event as CalendarEvent} /> },
-            day:   { event: ({ event }) => <WeekEventCard event={event as CalendarEvent} /> },
-          }}
-        />
-        {/* Custom Agenda overlay */}
-        {view === Views.AGENDA && (
-          <div className="mt-2 overflow-y-auto max-h-[560px] px-1">
-            <CustomAgendaView events={allEvents} onSelectEvent={handleSelectEvent} />
+        {view !== Views.AGENDA ? (
+          <Calendar
+            localizer={localizer}
+            events={displayEvents}
+            startAccessor="start"
+            endAccessor="end"
+            style={{ height: 600 }}
+            eventPropGetter={eventStyleGetter as any}
+            views={[Views.MONTH, Views.WEEK, Views.DAY, Views.AGENDA]}
+            view={view}
+            onView={setView}
+            defaultView={Views.MONTH}
+            onShowMore={handleShowMore as any}
+            onSelectEvent={handleSelectEvent as any}
+            onDrillDown={handleDrillDown}
+            onSelectSlot={handleSelectSlot as any}
+            selectable
+            dayLayoutAlgorithm={'no-overlap'}
+            timeslots={1}
+            scrollToTime={new Date(2000, 1, 1, 8, 0, 0)}
+            formats={{ eventTimeRangeFormat: () => '' }}
+            tooltipAccessor={null as any}
+            messages={{ showMore: (count: number) => `+${count} bookings` }}
+            components={{
+              month: { event: ({ event }) => <EventCard event={event as CalendarEvent} /> },
+              week:  { event: ({ event }) => <WeekEventCard event={event as CalendarEvent} /> },
+              day:   { event: ({ event }) => <WeekEventCard event={event as CalendarEvent} /> },
+            }}
+          />
+        ) : (
+          <div>
+            {/* Agenda toolbar that mirrors RBC style */}
+            <div className="rbc-toolbar mb-5 flex items-center justify-between flex-wrap gap-3">
+              <div className="flex gap-2">
+                <button className="rbc-btn-group" onClick={() => setView(Views.MONTH)}>Back</button>
+              </div>
+              <span className="rbc-toolbar-label text-white/90 font-bold text-sm">
+                All upcoming appointments
+              </span>
+              <div className="flex gap-1.5">
+                {([Views.MONTH, Views.WEEK, Views.DAY, Views.AGENDA] as View[]).map(v => (
+                  <button
+                    key={v}
+                    onClick={() => setView(v)}
+                    className={`rbc-btn-group capitalize text-xs ${v === Views.AGENDA ? 'rbc-active' : ''}`}
+                  >
+                    {v}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {/* Custom agenda cards */}
+            <div className="overflow-y-auto max-h-[520px] px-1">
+              <CustomAgendaView events={allEvents} onSelectEvent={handleSelectEvent} />
+            </div>
           </div>
         )}
       </div>
