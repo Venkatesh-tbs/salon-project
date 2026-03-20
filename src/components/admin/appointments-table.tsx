@@ -44,7 +44,7 @@ const STATUS_CONFIG: Record<AppointmentStatus, { label: string; dotClass: string
 export function AppointmentsTable({ appointments, isLoading = false, staffView = false }: AppointmentsTableProps) {
   const { toast } = useToast();
   const [loadingId, setLoadingId] = useState<string | null>(null);
-  const [staffList, setStaffList] = useState<{ staffId: string; name: string }[]>([]);
+  const [staffList, setStaffList] = useState<{ staffId: string; name: string; email?: string }[]>([]);
 
   useEffect(() => {
     if (!staffView) {
@@ -55,7 +55,12 @@ export function AppointmentsTable({ appointments, isLoading = false, staffView =
   const handleAssignStaff = async (apptId: string, staffId: string) => {
     const staff = staffList.find((s) => s.staffId === staffId);
     const apptRef = ref(db, `appointments/${apptId}`);
-    await update(apptRef, { staffId, staffName: staff?.name || '' });
+    // IMPORTANT: staffEmail must be updated when reassigned so the old staff dashboard stops showing it
+    await update(apptRef, { 
+      staffId, 
+      staffName: staff?.name || '',
+      staffEmail: staff?.email || ''
+    });
     toast({ title: 'Staff Assigned', description: `${staff?.name || 'Staff'} assigned to booking.` });
   };
 
