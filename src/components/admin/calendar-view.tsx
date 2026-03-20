@@ -138,13 +138,15 @@ function clusterTimelineEvents(events: CalendarEvent[]): any[] {
   return result;
 }
 
-// ─── Timeline Event Card (Week / Day) ───────────────────────
 function WeekEventCard({ event }: { event: any }) {
   if (event.status === 'cluster') {
     return (
-      <div className="w-full h-full p-1 group">
+      <div
+        className="w-full h-full group"
+        style={{ padding: '3px 4px', boxSizing: 'border-box' }}
+      >
         <div
-          className="w-full h-full rounded-xl px-2 py-2.5 transition-all duration-300 flex flex-col items-center justify-center cursor-pointer hover:scale-[1.02] hover:-translate-y-[1px] relative overflow-hidden"
+          className="w-full h-full rounded-xl px-3 py-3 transition-all duration-300 flex flex-col items-center justify-center cursor-pointer hover:scale-[1.02] relative"
           style={{
             background: 'linear-gradient(to bottom right, rgba(139,92,246,0.32), rgba(124,58,237,0.15))',
             backdropFilter: 'blur(16px)',
@@ -152,7 +154,8 @@ function WeekEventCard({ event }: { event: any }) {
             border: '1.5px dashed rgba(139,92,246,0.5)',
             color: '#e9d5ff',
             boxShadow: '0 8px 32px rgba(0,0,0,0.2), inset 0 0 20px rgba(139,92,246,0.12)',
-            minHeight: '60px'
+            minHeight: '80px',
+            boxSizing: 'border-box',
           }}
           onMouseEnter={(e) => { 
             e.currentTarget.style.boxShadow = '0 12px 40px rgba(139,92,246,0.4)'; 
@@ -166,7 +169,7 @@ function WeekEventCard({ event }: { event: any }) {
           }}
           title={event.title}
         >
-          <span className="font-black text-[14px] whitespace-nowrap overflow-hidden text-ellipsis drop-shadow-lg flex items-center justify-center gap-1.5 w-full text-center tracking-tight">
+          <span className="font-black text-[14px] whitespace-nowrap text-ellipsis overflow-hidden drop-shadow-lg flex items-center justify-center gap-1.5 w-full text-center tracking-tight">
             {event.title} <span className="opacity-70 group-hover:translate-x-1.5 transition-transform">→</span>
           </span>
         </div>
@@ -177,38 +180,45 @@ function WeekEventCard({ event }: { event: any }) {
   const appt = event.appointmentData;
   const color = STATUS_COLOR[event.status] ?? '#a78bfa';
   return (
-    <div className="w-full h-full p-1.5">
+    <div
+      className="w-full h-full group"
+      style={{ padding: '3px 6px', boxSizing: 'border-box' }}
+    >
       <div
-        className="w-full h-full rounded-xl px-3 py-3 opacity-[0.98] transition-all duration-300 cursor-pointer flex flex-col overflow-hidden hover:scale-[1.03] hover:-translate-y-[2px] group"
+        className="w-full h-full rounded-xl px-3 py-3 transition-all duration-300 cursor-pointer flex flex-col"
         style={{
           background: `${color}1E`,
           borderLeft: `5px solid ${color}`,
           borderTop: `1px solid ${color}45`,
           borderRight: `1px solid ${color}45`,
           borderBottom: `1px solid ${color}45`,
-          boxShadow: '0 10px 24px rgba(0,0,0,0.2), inset 0 0 12px rgba(255,255,255,0.04)',
-          minHeight: '60px',
+          boxShadow: '0 10px 24px rgba(0,0,0,0.2)',
+          minHeight: '80px',
           backdropFilter: 'blur(12px)',
+          boxSizing: 'border-box',
+          zIndex: 10,
         }}
         onMouseEnter={(e) => { 
           e.currentTarget.style.boxShadow = `0 14px 28px ${color}50`; 
           e.currentTarget.style.background = `${color}28`; 
         }}
         onMouseLeave={(e) => { 
-          e.currentTarget.style.boxShadow = '0 10px 24px rgba(0,0,0,0.2), inset 0 0 12px rgba(255,255,255,0.04)'; 
+          e.currentTarget.style.boxShadow = '0 10px 24px rgba(0,0,0,0.2)'; 
           e.currentTarget.style.background = `${color}1E`; 
         }}
         title={`${appt.name} · ${appt.service} · ${appt.time}`}
       >
-        <div className="font-black truncate text-[13px] text-white leading-tight drop-shadow-md mb-1.5 tracking-tight group-hover:text-amber-50 transition-colors">
+        <div className="font-black truncate text-[13px] text-white leading-tight drop-shadow-md mb-2 tracking-tight">
           {appt.name}
         </div>
-        <div className="flex flex-col gap-1 opacity-90 overflow-hidden text-[11px] font-medium leading-none">
-          <span className="truncate flex items-center gap-2 text-white/95">
-            <Clock className="w-3.5 h-3.5 flex-shrink-0 text-white/50" /> {appt.time}
+        <div className="flex flex-col gap-1.5 text-[11px] font-medium">
+          <span className="flex items-center gap-2 text-white/90" style={{ minWidth: 0 }}>
+            <Clock className="w-3.5 h-3.5 flex-shrink-0 text-white/50" />
+            <span className="truncate">{appt.time}</span>
           </span>
-          <span className="truncate flex items-center gap-2 text-white/75">
-            <Scissors className="w-3.5 h-3.5 flex-shrink-0 text-white/40" /> {appt.service}
+          <span className="flex items-center gap-2 text-white/70" style={{ minWidth: 0 }}>
+            <Scissors className="w-3.5 h-3.5 flex-shrink-0 text-white/40" />
+            <span className="truncate">{appt.service}</span>
           </span>
         </div>
       </div>
@@ -360,9 +370,9 @@ export function CalendarView({ appointments }: CalendarViewProps) {
 
           /* EVENT SLOTS */
           .rbc-row-segment { padding: 1px 3px; }
-          .rbc-event { background: transparent !important; border: none !important; padding: 0 !important; box-shadow: none !important; border-radius: 8px; }
+          .rbc-event { background: transparent !important; border: none !important; padding: 0 !important; box-shadow: none !important; border-radius: 8px !important; box-sizing: border-box !important; overflow: visible !important; }
           .rbc-event:focus { outline: none; }
-          .rbc-event-content { overflow: visible; }
+          .rbc-event-content { overflow: visible !important; height: auto !important; }
           .rbc-time-view .rbc-event-label { display: none !important; }
 
           /* SHOW MORE LINK */
@@ -397,11 +407,11 @@ export function CalendarView({ appointments }: CalendarViewProps) {
           .rbc-toolbar-label { color: rgba(255,255,255,0.9); font-weight: 700; font-size: 15px; letter-spacing: -0.01em; }
 
           /* WEEK / DAY TIMELINE  */
-          .rbc-time-view { border: 1px solid rgba(255,255,255,0.07) !important; border-radius: 12px; overflow: hidden; }
+          .rbc-time-view { border: 1px solid rgba(255,255,255,0.07) !important; border-radius: 12px; overflow: visible; }
           .rbc-time-header { border-color: rgba(255,255,255,0.07) !important; }
           .rbc-time-header-content { border-color: rgba(255,255,255,0.07) !important; }
-          .rbc-time-content { border-color: rgba(255,255,255,0.07) !important; }
-          .rbc-timeslot-group { border-color: rgba(255,255,255,0.04) !important; min-height: 90px !important; }
+          .rbc-time-content { border-color: rgba(255,255,255,0.07) !important; overflow: visible !important; }
+          .rbc-timeslot-group { border-color: rgba(255,255,255,0.04) !important; min-height: 100px !important; }
           .rbc-time-slot { border-color: rgba(255,255,255,0.03) !important; }
           .rbc-day-bg.rbc-today { background: linear-gradient(to bottom, rgba(167, 139, 250, 0.08), rgba(167, 139, 250, 0.01)) !important; }
           .rbc-time-gutter .rbc-label { color: rgba(255,255,255,0.45); font-size: 11px; font-weight: 700; letter-spacing: 0.05em; padding-right: 14px; }
@@ -409,7 +419,9 @@ export function CalendarView({ appointments }: CalendarViewProps) {
           .rbc-day-slot .rbc-time-slot { border-color: rgba(255,255,255,0.03) !important; }
           .rbc-day-slot .rbc-event { 
             width: calc(100% - 12px) !important;
-            margin: 0 6px !important; 
+            margin: 0 6px !important;
+            overflow: visible !important;
+            z-index: 10;
           }
           .rbc-allday-cell { background: rgba(255,255,255,0.01); border-color: rgba(255,255,255,0.07) !important; }
           .rbc-time-view .rbc-header { border-color: rgba(255,255,255,0.07) !important; }
