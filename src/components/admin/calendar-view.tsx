@@ -395,16 +395,35 @@ export function CalendarView({ appointments }: CalendarViewProps) {
     return clusterTimelineEvents(events);
   }, [events, view]);
 
+  const isDraggableAuth = useCallback((event: CalendarEvent) => {
+    if (event.status === 'cluster') return false;
+    if (event.status === 'completed') return false;
+    
+    // allow rescheduling only for today or future
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    if ((event.start as Date) < startOfToday) return false;
+    
+    return true;
+  }, []);
+
   const eventStyleGetter = useCallback((event: CalendarEvent) => {
-    const color = STATUS_COLOR[event.status] ?? '#a78bfa';
+    const isDraggable = isDraggableAuth(event);
     return {
       style: {
         background: 'transparent',
+        opacity: (!isDraggable && event.status !== 'cluster') ? 0.6 : 1,
+        cursor: (!isDraggable && event.status !== 'cluster') ? 'not-allowed' : undefined,
       },
     };
-  }, []);
+  }, [isDraggableAuth]);
 
   const onEventDrop = useCallback(async ({ event, start, end }: any) => {
+    if (!isDraggableAuth(event)) {
+      toast({ title: "Not Allowed", description: "Completed or past bookings cannot be rescheduled.", variant: "destructive" });
+      return;
+    }
+
     const now = new Date();
     if (start < now) {
       toast({ title: "Invalid Reschedule", description: "Cannot move appointments to a past date/time.", variant: "destructive" });
@@ -646,7 +665,7 @@ export function CalendarView({ appointments }: CalendarViewProps) {
             messages={{ showMore: (count: number) => `+${count} bookings` }}
             
             // Drag and Drop props
-            draggableAccessor={() => true}
+            draggableAccessor={isDraggableAuth as any}
             resizableAccessor={() => false}
             onEventDrop={onEventDrop}
 
