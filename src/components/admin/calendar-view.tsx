@@ -425,6 +425,7 @@ export function CalendarView({ appointments }: CalendarViewProps) {
   const [view, setView] = useState<View>(Views.MONTH);
   const [isMobile, setIsMobile] = useState(false);
   const [resources, setResources] = useState<any[]>([]);
+  const [leaveDates, setLeaveDates] = useState<Set<string>>(new Set());
   const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -451,6 +452,27 @@ export function CalendarView({ appointments }: CalendarViewProps) {
       }
     });
     return () => off(staffRef, 'value', listener);
+  }, []);
+
+  // ── Fetch ALL approved leave dates globally for calendar tinting ──────────
+  useEffect(() => {
+    const leavesRef = ref(db, 'staffLeaves');
+    const listener = onValue(leavesRef, (snap) => {
+      const dates = new Set<string>();
+      if (snap.exists()) {
+        snap.forEach((staffChild) => {
+          staffChild.forEach((dateChild) => {
+            const val = dateChild.val();
+            const status = val?.status || (val === true || val?.unavailable ? 'approved' : 'pending');
+            if (status === 'approved') {
+              dates.add(dateChild.key!);
+            }
+          });
+        });
+      }
+      setLeaveDates(dates);
+    });
+    return () => off(leavesRef, 'value', listener);
   }, []);
 
   const allEvents = useMemo<CalendarEvent[]>(() => {
@@ -511,6 +533,22 @@ export function CalendarView({ appointments }: CalendarViewProps) {
       },
     };
   }, [isDraggableAuth]);
+
+  const dayPropGetter = useCallback((date: Date) => {
+    const yyyy = date.getFullYear();
+    const mm = String(date.getMonth() + 1).padStart(2, '0');
+    const dd = String(date.getDate()).padStart(2, '0');
+    const dateStr = `${yyyy}-${mm}-${dd}`;
+    if (leaveDates.has(dateStr)) {
+      return {
+        style: {
+          background: 'rgba(239,68,68,0.08)',
+          boxShadow: 'inset 0 0 0 1px rgba(239,68,68,0.2)',
+        },
+      };
+    }
+    return {};
+  }, [leaveDates]);
 
   const onEventDrop = useCallback(async ({ event, start, end, resourceId }: any) => {
     if (event.status === 'completed') {
@@ -911,6 +949,7 @@ export function CalendarView({ appointments }: CalendarViewProps) {
               return allEvents.find(e => e.id === id) || ({} as any);
             }}
             eventPropGetter={eventStyleGetter as any}
+            dayPropGetter={dayPropGetter as any}
             views={[Views.MONTH, Views.WEEK, Views.DAY, Views.AGENDA]}
             view={view}
             onView={setView}

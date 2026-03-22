@@ -234,16 +234,40 @@ export default function StaffDashboardPage() {
                    onClick={async () => {
                      setLeaveLoading(true);
                      try {
+                       if (!isOnLeave) {
+                         if (leaveType === 'partial') {
+                           const sMins = Number(startTime.split(':')[0]) * 60 + Number(startTime.split(':')[1]);
+                           const eMins = Number(endTime.split(':')[0]) * 60 + Number(endTime.split(':')[1]);
+                           if (sMins >= eMins) {
+                             toast({ title: "Invalid Range ❌", description: "Start time must be strictly before end time.", variant: "destructive" });
+                             return;
+                           }
+                         }
+                         
+                         const existing = allLeaves.find(l => l.date === leaveDate);
+                         if (existing) {
+                           toast({ title: "Conflict ❌", description: "A leave request already exists for this exact date.", variant: "destructive" });
+                           return;
+                         }
+                       }
+
                        const targetRef = ref(db, `staffLeaves/${currentStaffId}/${leaveDate}`);
                        if (isOnLeave) {
                          await remove(targetRef);
                          toast({ title: "Available 🟢", description: `You have removed your leave for ${leaveDate}.` });
+                         setLeaveDate(''); // wipe on remove
                        } else {
                          const payload = leaveType === 'full' 
                            ? { type: 'full', status: 'pending', createdAt: Date.now() }
                            : { type: 'partial', startTime, endTime, status: 'pending', createdAt: Date.now() };
                          await set(targetRef, payload);
-                         toast({ title: "Leave Requested 🔴", description: `Your leave for ${leaveDate} is pending admin approval.`, variant: "default" });
+                         toast({ title: "Leave request submitted ✅", description: `Your leave for ${leaveDate} is pending approval.` });
+                         
+                         // Clear form on success
+                         setLeaveDate('');
+                         setLeaveType('full');
+                         setStartTime('09:00');
+                         setEndTime('12:00');
                        }
                      } finally {
                        setLeaveLoading(false);
@@ -276,16 +300,18 @@ export default function StaffDashboardPage() {
                      const displayType = isLegacy ? 'Full Day' : l.type === 'partial' ? `${l.startTime} to ${l.endTime}` : 'Full Day';
                      return (
                        <div key={l.date} className="px-3 py-2.5 rounded-lg border border-white/5 bg-black/20 flex items-center justify-between text-xs backdrop-blur-sm">
-                          <span className="text-white/80 font-medium">
+                          <span className="text-white/80 font-medium w-3/5 truncate">
                             {format(new Date(l.date), 'MMM d, yyyy')} <span className="text-white/40 ml-2">({displayType})</span>
                           </span>
-                          <span className={`px-2.5 py-1 rounded-md font-bold uppercase text-[9px] tracking-wider ${
-                             (l.status === 'approved' || isLegacy) ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 
-                             l.status === 'rejected' ? 'bg-red-500/20 text-red-400 border border-red-500/30' :
-                             'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'
-                          }`}>
-                            {(l.status || (isLegacy ? 'approved' : 'pending'))}
-                          </span>
+                          <div className="w-2/5 flex justify-end">
+                            <span className={`px-2.5 py-1 rounded-md font-bold uppercase text-[9px] tracking-wider ${
+                               (l.status === 'approved' || isLegacy) ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 
+                               l.status === 'rejected' ? 'bg-red-500/20 text-red-400 border border-red-500/30' :
+                               'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'
+                            }`}>
+                              {(l.status || (isLegacy ? 'approved' : 'pending'))}
+                            </span>
+                          </div>
                        </div>
                      )
                    })}

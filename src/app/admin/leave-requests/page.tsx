@@ -24,6 +24,8 @@ export default function LeaveRequestsPage() {
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
+  const todayStr = new Date().toISOString().split('T')[0];
+
   useEffect(() => {
     const staffRef = ref(db, 'staff');
     let staffMap: Record<string, string> = {};
@@ -112,10 +114,25 @@ export default function LeaveRequestsPage() {
   return (
     <div className="p-8 md:p-12 max-w-6xl mx-auto w-full">
       <div className="mb-10">
-        <h1 className="text-4xl font-black font-syne text-white tracking-tight flex items-center gap-4">
-          <CalendarMinus className="w-10 h-10 text-brand-purple" />
-          Leave Requests
-        </h1>
+        <div className="flex flex-wrap items-center gap-4 mb-2">
+          <h1 className="text-4xl font-black font-syne text-white tracking-tight flex items-center gap-4">
+            <CalendarMinus className="w-10 h-10 text-brand-purple" />
+            Leave Requests
+          </h1>
+          {/* Quick stat badges */}
+          <div className="flex items-center gap-3 ml-auto">
+            <div className="flex items-center gap-2 px-4 py-2 rounded-xl border border-yellow-500/25 bg-yellow-500/10">
+              <span className="w-2 h-2 rounded-full bg-yellow-400 animate-pulse" />
+              <span className="text-yellow-400 font-black text-sm">{requests.filter(r => r.status === 'pending').length}</span>
+              <span className="text-yellow-400/60 text-xs font-medium">Pending</span>
+            </div>
+            <div className="flex items-center gap-2 px-4 py-2 rounded-xl border border-green-500/25 bg-green-500/10">
+              <span className="w-2 h-2 rounded-full bg-green-400" />
+              <span className="text-green-400 font-black text-sm">{requests.filter(r => r.status === 'approved' && r.date === todayStr).length}</span>
+              <span className="text-green-400/60 text-xs font-medium">Approved Today</span>
+            </div>
+          </div>
+        </div>
         <p className="text-slate-400 mt-2 font-medium">Approve or reject staff downtime and partial shifts.</p>
       </div>
 
