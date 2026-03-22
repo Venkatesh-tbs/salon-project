@@ -27,6 +27,10 @@ export async function loginWithEmailFlow(email: string, password: string) {
     throw new Error(err.error || 'Failed to create session');
   }
 
+  // Explicitly inject client cookie for HTTPS environments (Vercel)
+  const safeEmail = encodeURIComponent(userCredential.user.email || '');
+  document.cookie = `session_email=${safeEmail}; path=/; SameSite=None; Secure`;
+
   return userCredential.user;
 }
 
@@ -37,6 +41,9 @@ export async function logoutFlow() {
   } catch {
     // already signed out
   }
-  // Clear session cookie
+  // Clear session cookie from server
   await fetch('/api/auth/session', { method: 'DELETE' });
+
+  // Clear client cookie explicitly
+  document.cookie = "session_email=; path=/; expires=Thu, 01 Jan 1970 00:00:00; SameSite=None; Secure";
 }

@@ -30,8 +30,8 @@ export default function StaffLoginPage() {
     setError('');
     try {
       await loginWithEmailFlow(email, password);
-      router.push('/staff/dashboard');
-      router.refresh();
+      window.location.href = '/staff/dashboard'; // Force full page reload redirect
+
     } catch (err: any) {
       setError(getFirebaseError(err?.code || ''));
     } finally {

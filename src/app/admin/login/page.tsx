@@ -36,8 +36,7 @@ export default function AdminLoginPage() {
     setError('');
     try {
       await loginWithEmailFlow(email, password);
-      router.push('/admin/dashboard');
-      router.refresh();
+      window.location.href = '/admin/dashboard';
     } catch (err: any) {
       console.error("Login caught error:", err);
       setError(getFirebaseError(err));
