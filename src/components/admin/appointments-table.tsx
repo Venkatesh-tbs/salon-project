@@ -76,16 +76,24 @@ export function AppointmentsTable({ appointments, isLoading = false, staffView =
       const apptRef = ref(db, `appointments/${apptId}`);
       await update(apptRef, { status, updatedAt: Date.now() });
 
-      // Push notification for CANCEL or COMPLETED
-      if (status === 'cancelled') {
-        const { push } = await import('firebase/database');
-        await push(ref(db, 'notifications'), {
-          type: 'CANCEL',
-          message: `Booking cancelled for ${appointment.name}`,
+      // Push real-time notification for key status changes
+      if (status === 'cancelled' || status === 'confirmed' || status === 'completed') {
+        const { push: rtdbPush } = await import('firebase/database');
+        const notifType = status === 'cancelled' ? 'CANCEL' : status === 'confirmed' ? 'CONFIRMED' : 'COMPLETED';
+        const notifMsg =
+          status === 'cancelled'
+            ? `Booking cancelled for ${appointment.name}`
+            : status === 'confirmed'
+            ? `Booking confirmed for ${appointment.name} — ${appointment.service}`
+            : `Session completed for ${appointment.name}`;
+
+        await rtdbPush(ref(db, 'notifications'), {
+          type: notifType,
+          message: notifMsg,
           createdAt: Date.now(),
           read: false,
           staffId: appointment.staffId || null,
-        }).catch(err => console.error('Failed to push notification:', err));
+        }).catch(err => console.error('[Notifications] Failed to push:', err));
       }
 
       if (status === 'confirmed') {

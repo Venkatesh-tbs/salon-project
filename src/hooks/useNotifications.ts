@@ -3,7 +3,7 @@ import { ref, onValue, update, get } from 'firebase/database';
 import { db } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 
-export type NotificationType = 'BOOKING' | 'CANCEL' | 'RESCHEDULE';
+export type NotificationType = 'BOOKING' | 'CANCEL' | 'RESCHEDULE' | 'CONFIRMED' | 'COMPLETED';
 
 export interface AppNotification {
   id: string;
@@ -12,6 +12,52 @@ export interface AppNotification {
   createdAt: number;
   read: boolean;
   staffId?: string | null;
+}
+
+/**
+ * Resolves the current user's staffId from Firebase.
+ * Uses session_email cookie to look up staff members.
+ * Returns null for admins (who have no staff entry).
+ */
+async function resolveCurrentStaffId(): Promise<{ staffId: string | null; isAdmin: boolean }> {
+  if (typeof document === 'undefined') return { staffId: null, isAdmin: true };
+
+  const rawEmail = document.cookie
+    .split('; ')
+    .find((r) => r.startsWith('session_email='))
+    ?.split('=')[1];
+
+  const staffEmailVal = decodeURIComponent(rawEmail || '').trim().toLowerCase();
+
+  if (!staffEmailVal) {
+    // No session email found — treat as admin (sees global notifications)
+    console.log('[Notifications] No session_email cookie found — treating as global user');
+    return { staffId: null, isAdmin: true };
+  }
+
+  const staffSnap = await get(ref(db, 'staff'));
+  if (!staffSnap.exists()) {
+    console.log('[Notifications] No staff node found in DB');
+    return { staffId: null, isAdmin: true };
+  }
+
+  let resolvedStaffId: string | null = null;
+  staffSnap.forEach((child) => {
+    const member = child.val();
+    const memberEmail = (member.email || '').trim().toLowerCase();
+    if (memberEmail === staffEmailVal) {
+      resolvedStaffId = member.staffId || child.key;
+      console.log('[Notifications] Resolved staffId:', resolvedStaffId, 'for email:', staffEmailVal);
+    }
+  });
+
+  if (resolvedStaffId) {
+    return { staffId: resolvedStaffId, isAdmin: false };
+  }
+
+  // Email found but no matching staff record — treat as admin
+  console.log('[Notifications] Email not matched in staff node — treating as admin for:', staffEmailVal);
+  return { staffId: null, isAdmin: true };
 }
 
 export function useNotifications() {
@@ -23,72 +69,61 @@ export function useNotifications() {
     let unsubscribeNotifications: (() => void) | null = null;
 
     const setupNotifications = async () => {
-      let currentStaffId: string | null = null;
-      
-      // Resolve staff context if a session email cookie is present
-      if (typeof document !== 'undefined') {
-        const rawEmail = document.cookie
-          .split('; ')
-          .find((r) => r.startsWith('session_email='))
-          ?.split('=')[1];
-        
-        const staffEmailVal = decodeURIComponent(rawEmail || '').toLowerCase();
-        
-        if (staffEmailVal) {
-          const staffSnap = await get(ref(db, 'staff'));
-          if (staffSnap.exists()) {
-            staffSnap.forEach((child) => {
-              const member = child.val();
-              if (member.email?.toLowerCase() === staffEmailVal) {
-                currentStaffId = member.staffId || child.key;
-              }
-            });
-          }
-        }
-      }
+      const { staffId: currentStaffId, isAdmin } = await resolveCurrentStaffId();
 
       const notificationsRef = ref(db, 'notifications');
-      
-      // Subscribe to realtime database changes
+
       unsubscribeNotifications = onValue(notificationsRef, (snapshot) => {
-        if (snapshot.exists()) {
-          const data = snapshot.val();
-          let parsed: AppNotification[] = Object.keys(data).map((key) => ({
-            id: key,
-            ...data[key],
-          }));
-
-          // Filter for targeted notifications: show only if staffId is omitted/null OR matches current user
-          parsed = parsed.filter(n => !n.staffId || n.staffId === currentStaffId);
-
-          // Sort by newest first
-          parsed.sort((a, b) => b.createdAt - a.createdAt);
-
-          // Calculate unread
-          const unread = parsed.filter((n) => !n.read).length;
-          
-          setNotifications((prev) => {
-            // Check for new notifications to toast
-            if (prev.length > 0) {
-              const prevIds = new Set(prev.map(p => p.id));
-              const newNotifications = parsed.filter(n => !prevIds.has(n.id) && !n.read);
-              
-              newNotifications.forEach(n => {
-                toast({
-                  title: n.type === 'BOOKING' ? 'New Booking!' : n.type === 'CANCEL' ? 'Booking Cancelled' : 'Booking Updated',
-                  description: n.message,
-                  duration: 5000,
-                });
-              });
-            }
-            return parsed;
-          });
-
-          setUnreadCount(unread);
-        } else {
+        if (!snapshot.exists()) {
           setNotifications([]);
           setUnreadCount(0);
+          return;
         }
+
+        const data = snapshot.val();
+        let parsed: AppNotification[] = Object.keys(data).map((key) => ({
+          id: key,
+          ...data[key],
+        }));
+
+        // Filter logic:
+        // - Admin (isAdmin=true, currentStaffId=null): sees ALL notifications (global + targeted)
+        // - Staff (isAdmin=false, currentStaffId=some_id): sees global (staffId null/undefined) OR their own
+        // - Backward compat: notifications without staffId are global — visible to all
+        parsed = parsed.filter((n) => {
+          if (isAdmin) return true; // admins see everything
+          // staff see notifications where staffId is absent/null OR matches their staffId
+          return !n.staffId || n.staffId === currentStaffId;
+        });
+
+        parsed.sort((a, b) => b.createdAt - a.createdAt);
+
+        const unread = parsed.filter((n) => !n.read).length;
+
+        setNotifications((prev) => {
+          if (prev.length > 0) {
+            const prevIds = new Set(prev.map((p) => p.id));
+            const newItems = parsed.filter((n) => !prevIds.has(n.id) && !n.read);
+
+            newItems.forEach((n) => {
+              const titleMap: Record<string, string> = {
+                BOOKING: '📅 New Booking!',
+                CANCEL: '❌ Booking Cancelled',
+                RESCHEDULE: '🔄 Booking Updated',
+                CONFIRMED: '✅ Booking Confirmed',
+                COMPLETED: '✅ Session Complete',
+              };
+              toast({
+                title: titleMap[n.type] ?? 'Notification',
+                description: n.message,
+                duration: 5000,
+              });
+            });
+          }
+          return parsed;
+        });
+
+        setUnreadCount(unread);
       });
     };
 
