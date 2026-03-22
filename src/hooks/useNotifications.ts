@@ -163,25 +163,24 @@ export function useNotifications() {
   };
 
   /**
-   * Per-user clear:
-   * - Admin: marks only GLOBAL notifications (staffId=null/undefined) as hidden for admin.
-   *   Staff-targeted notifications are NEVER touched by admin clearAll.
-   * - Staff: marks only THEIR notifications (staffId === their own) as hidden for them.
-   * Neither action affects the other user's view.
+   * Per-user clear logic:
+   * Safely merges the hiddenFor state so that clearing only affects the current user's UI.
+   * Admin clearing will NOT hide the notification for staff.
    */
   const clearAll = async () => {
     if (!userCtx.current) return;
-    const { userId, isAdmin, currentStaffId } = userCtx.current;
+    const { userId } = userCtx.current;
+    
     try {
       const updates: Record<string, any> = {};
       notifications.forEach((n) => {
-        // Admin only clears global notifications from their view, never staff-targeted ones
-        if (isAdmin && n.staffId) return;
-        // Staff only clears notifications assigned to them
-        if (!isAdmin && n.staffId !== currentStaffId) return;
-
-        updates[`${n.id}/hiddenFor/${userId}`] = true;
+        // Explicitly maintain existing hidden states for other users
+        updates[`${n.id}/hiddenFor`] = {
+          ...(n.hiddenFor || {}),
+          [userId]: true
+        };
       });
+      
       if (Object.keys(updates).length > 0) {
         await update(ref(db, 'notifications'), updates);
       }
