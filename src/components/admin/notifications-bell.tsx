@@ -38,12 +38,12 @@ export function NotificationsBell() {
       >
         <Bell className="w-5 h-5" />
         {unreadCount > 0 && (
-          <span className="absolute top-1 right-1.5 w-2 h-2 rounded-full bg-red-500 animate-pulse border border-zinc-950"></span>
+          <span className="absolute top-1 right-1.5 w-2 h-2 rounded-full bg-red-500 animate-pulse border border-zinc-950" />
         )}
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-80 bg-zinc-900 border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden text-left origin-top-right animate-in fade-in slide-in-from-top-2">
+        <div className="absolute left-0 mt-2 w-80 min-w-[320px] bg-zinc-900 border border-white/10 rounded-xl shadow-2xl z-[100] overflow-hidden text-left origin-top-left animate-in fade-in slide-in-from-top-2">
           <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-zinc-900/50">
             <h3 className="text-sm font-semibold text-white">Notifications</h3>
             {unreadCount > 0 && (

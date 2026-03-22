@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ref, onValue, update } from 'firebase/database';
+import { ref, onValue, update, get } from 'firebase/database';
 import { db } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 
@@ -11,6 +11,7 @@ export interface AppNotification {
   message: string;
   createdAt: number;
   read: boolean;
+  staffId?: string | null;
 }
 
 export function useNotifications() {
@@ -19,48 +20,83 @@ export function useNotifications() {
   const { toast } = useToast();
 
   useEffect(() => {
-    const notificationsRef = ref(db, 'notifications');
-    
-    // Subscribe to realtime database changes
-    const unsubscribe = onValue(notificationsRef, (snapshot) => {
-      if (snapshot.exists()) {
-        const data = snapshot.val();
-        const parsed: AppNotification[] = Object.keys(data).map((key) => ({
-          id: key,
-          ...data[key],
-        }));
+    let unsubscribeNotifications: (() => void) | null = null;
 
-        // Sort by newest first
-        parsed.sort((a, b) => b.createdAt - a.createdAt);
-
-        // Calculate unread
-        const unread = parsed.filter((n) => !n.read).length;
+    const setupNotifications = async () => {
+      let currentStaffId: string | null = null;
+      
+      // Resolve staff context if a session email cookie is present
+      if (typeof document !== 'undefined') {
+        const rawEmail = document.cookie
+          .split('; ')
+          .find((r) => r.startsWith('session_email='))
+          ?.split('=')[1];
         
-        setNotifications((prev) => {
-          // Check for new notifications to toast
-          if (prev.length > 0) {
-            const prevIds = new Set(prev.map(p => p.id));
-            const newNotifications = parsed.filter(n => !prevIds.has(n.id) && !n.read);
-            
-            newNotifications.forEach(n => {
-              toast({
-                title: n.type === 'BOOKING' ? 'New Booking!' : n.type === 'CANCEL' ? 'Booking Cancelled' : 'Booking Updated',
-                description: n.message,
-                duration: 5000,
-              });
+        const staffEmailVal = decodeURIComponent(rawEmail || '').toLowerCase();
+        
+        if (staffEmailVal) {
+          const staffSnap = await get(ref(db, 'staff'));
+          if (staffSnap.exists()) {
+            staffSnap.forEach((child) => {
+              const member = child.val();
+              if (member.email?.toLowerCase() === staffEmailVal) {
+                currentStaffId = member.staffId || child.key;
+              }
             });
           }
-          return parsed;
-        });
-
-        setUnreadCount(unread);
-      } else {
-        setNotifications([]);
-        setUnreadCount(0);
+        }
       }
-    });
 
-    return () => unsubscribe();
+      const notificationsRef = ref(db, 'notifications');
+      
+      // Subscribe to realtime database changes
+      unsubscribeNotifications = onValue(notificationsRef, (snapshot) => {
+        if (snapshot.exists()) {
+          const data = snapshot.val();
+          let parsed: AppNotification[] = Object.keys(data).map((key) => ({
+            id: key,
+            ...data[key],
+          }));
+
+          // Filter for targeted notifications: show only if staffId is omitted/null OR matches current user
+          parsed = parsed.filter(n => !n.staffId || n.staffId === currentStaffId);
+
+          // Sort by newest first
+          parsed.sort((a, b) => b.createdAt - a.createdAt);
+
+          // Calculate unread
+          const unread = parsed.filter((n) => !n.read).length;
+          
+          setNotifications((prev) => {
+            // Check for new notifications to toast
+            if (prev.length > 0) {
+              const prevIds = new Set(prev.map(p => p.id));
+              const newNotifications = parsed.filter(n => !prevIds.has(n.id) && !n.read);
+              
+              newNotifications.forEach(n => {
+                toast({
+                  title: n.type === 'BOOKING' ? 'New Booking!' : n.type === 'CANCEL' ? 'Booking Cancelled' : 'Booking Updated',
+                  description: n.message,
+                  duration: 5000,
+                });
+              });
+            }
+            return parsed;
+          });
+
+          setUnreadCount(unread);
+        } else {
+          setNotifications([]);
+          setUnreadCount(0);
+        }
+      });
+    };
+
+    setupNotifications();
+
+    return () => {
+      if (unsubscribeNotifications) unsubscribeNotifications();
+    };
   }, [toast]);
 
   const markAsRead = async (id: string) => {

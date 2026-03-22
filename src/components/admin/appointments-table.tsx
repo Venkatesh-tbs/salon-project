@@ -84,6 +84,7 @@ export function AppointmentsTable({ appointments, isLoading = false, staffView =
           message: `Booking cancelled for ${appointment.name}`,
           createdAt: Date.now(),
           read: false,
+          staffId: appointment.staffId || null,
         }).catch(err => console.error('Failed to push notification:', err));
       }
 

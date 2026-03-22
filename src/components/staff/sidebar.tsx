@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { logoutFlow } from '@/firebase/auth/client-flow';
 import { useRouter } from 'next/navigation';
+import { NotificationsBell } from '@/components/admin/notifications-bell';
 
 const sidebarItems = [
   {
@@ -29,10 +30,11 @@ export function StaffSidebar() {
 
   return (
     <div className="flex h-screen w-64 flex-col border-r border-white/10 bg-zinc-950 px-3 py-4">
-      <div className="mb-8 px-3">
+      <div className="mb-8 px-3 flex items-center justify-between">
         <h2 className="text-xl font-bold bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">
           Staff Portal
         </h2>
+        <NotificationsBell />
       </div>
       <nav className="flex-1 space-y-1">
         {sidebarItems.map((item) => {

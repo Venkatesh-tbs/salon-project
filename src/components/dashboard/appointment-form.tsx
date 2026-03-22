@@ -426,6 +426,7 @@ export function AppointmentForm({ initialData, onSuccess }: AppointmentFormProps
         message: `New booking by ${appointment.name} for ${appointment.service}`,
         createdAt: Date.now(),
         read: false,
+        staffId: appointment.staffId || null,
       }).catch(err => console.error('Failed to push notification:', err));
 
       console.log('[Booking] Booking saved successfully:', appointment.name, appointment.date, appointment.time);
