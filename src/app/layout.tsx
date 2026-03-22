@@ -20,6 +20,8 @@ const dmSans = DM_Sans({
 // Validate optional env vars on every server start
 checkEnvVars();
 
+export const dynamic = 'force-dynamic';
+
 export const metadata: Metadata = {
   title: "Luxe Men's Salon",
   description: 'Premium grooming experience for modern gentlemen.',
