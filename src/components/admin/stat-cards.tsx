@@ -14,10 +14,56 @@ export function StatCards({ appointments }: StatCardsProps) {
   const pendingCount = appointments.filter(a => a.status === 'pending' || a.status === 'confirmed').length;
   const completedCount = appointments.filter(a => a.status === 'completed').length;
 
+  // --- Analytics Logic ---
+  const validBookings = appointments.filter(a => a.status !== 'cancelled');
+  const hourCounts: Record<string, number> = {};
+  const dayCounts: Record<string, number> = {};
+  const staffCounts: Record<string, number> = {};
+
+  validBookings.forEach(a => {
+    // Peak Hour Insight
+    if (a.time) {
+      const hour = parseInt(a.time.split(':')[0] || '0', 10);
+      const ampm = hour >= 12 ? 'PM' : 'AM';
+      const h12 = hour % 12 || 12;
+      const key = `${h12} ${ampm}`;
+      hourCounts[key] = (hourCounts[key] || 0) + 1;
+    }
+    // Busiest Day Insight
+    if (a.date) {
+      const d = new Date(a.date);
+      if (!isNaN(d.getTime())) {
+        const dayStr = d.toLocaleDateString('en-US', { weekday: 'long' });
+        dayCounts[dayStr] = (dayCounts[dayStr] || 0) + 1;
+      }
+    }
+    // Top Staff Insight
+    if (a.staffEmail || a.staffId) {
+      const identifier = a.staffEmail ? a.staffEmail.split('@')[0] : (a.staffId || 'Unassigned');
+      const capitalized = identifier.charAt(0).toUpperCase() + identifier.slice(1);
+      staffCounts[capitalized] = (staffCounts[capitalized] || 0) + 1;
+    }
+  });
+
+  const getTop = (record: Record<string, number>) => {
+    let max = 0;
+    let topKey = '';
+    for (const [k, v] of Object.entries(record)) {
+      if (v > max) { max = v; topKey = k; }
+    }
+    return topKey;
+  };
+
+  const peakHour = getTop(hourCounts) || 'N/A';
+  const busiestDay = getTop(dayCounts) || 'N/A';
+  const topStaff = getTop(staffCounts) || 'N/A';
+  const successRate = totalBookings > 0 ? Math.round((completedCount / (totalBookings + pendingCount)) * 100) : 100;
+
   const cards = [
     {
       label: "Today's Bookings",
       value: todaysBookings,
+      insight: `Peak Flow: ${peakHour}`,
       icon: CalendarDays,
       colorFrom: 'brand-purple',
       glow: 'rgba(123,47,247,0.15)',
@@ -30,6 +76,7 @@ export function StatCards({ appointments }: StatCardsProps) {
     {
       label: 'Total Bookings',
       value: totalBookings,
+      insight: `Busiest: ${busiestDay}`,
       icon: Users,
       colorFrom: 'brand-pink',
       glow: 'rgba(241,7,163,0.15)',
@@ -42,6 +89,7 @@ export function StatCards({ appointments }: StatCardsProps) {
     {
       label: 'Pending / Upcoming',
       value: pendingCount,
+      insight: `Top Stylist: ${topStaff}`,
       icon: Clock,
       colorFrom: 'yellow-500',
       glow: 'rgba(234,179,8,0.15)',
@@ -54,6 +102,7 @@ export function StatCards({ appointments }: StatCardsProps) {
     {
       label: 'Completed',
       value: completedCount,
+      insight: `${successRate}% Success Rate`,
       icon: CheckCircle,
       colorFrom: 'teal-500',
       glow: 'rgba(20,184,166,0.15)',
@@ -79,6 +128,7 @@ export function StatCards({ appointments }: StatCardsProps) {
               <div>
                 <p className="text-xs font-medium text-white/50 tracking-wide uppercase leading-tight">{card.label}</p>
                 <h3 className="mt-2 text-4xl font-heading font-bold text-white tracking-tight">{card.value}</h3>
+                <p className={`mt-2 text-[10px] font-bold tracking-widest uppercase ${card.iconColor} opacity-80`}>{card.insight}</p>
               </div>
               <div
                 className={`flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-${card.colorFrom}/20 to-${card.colorFrom}/5 border border-${card.borderColor} transition-all`}
