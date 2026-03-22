@@ -781,7 +781,7 @@ export function CalendarView({ appointments }: CalendarViewProps) {
           .rbc-allday-cell { background: rgba(255,255,255,0.01); border-color: rgba(255,255,255,0.07) !important; }
           .rbc-time-view .rbc-header { border-color: rgba(255,255,255,0.07) !important; }
 
-          /* Hide default popup */
+          /* Hide default popup — popup={false} handles this at the component level */
           .rbc-overlay { display: none !important; }
           /* Agenda: hide default since we render custom */
           .rbc-agenda-view { display: none !important; }
@@ -801,6 +801,7 @@ export function CalendarView({ appointments }: CalendarViewProps) {
           }
           .rbc-addons-dnd-dragger { cursor: grab !important; }
           .rbc-addons-dnd-dragger:active { cursor: grabbing !important; }
+          .rbc-day-slot { max-height: 200px; overflow-y: auto; }
         `}</style>
 
         {view !== Views.AGENDA ? (
@@ -811,6 +812,7 @@ export function CalendarView({ appointments }: CalendarViewProps) {
             endAccessor="end"
             titleAccessor="title"
             style={{ height: '620px' }}
+            popup={false}
             components={{
               month: { event: ({ event }) => <EventCard key={(event as CalendarEvent).id} event={event as CalendarEvent} /> },
               week:  { event: ({ event }) => <WeekEventCard key={(event as CalendarEvent).id} event={event as CalendarEvent} /> },
