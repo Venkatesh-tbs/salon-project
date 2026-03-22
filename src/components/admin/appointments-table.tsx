@@ -76,6 +76,17 @@ export function AppointmentsTable({ appointments, isLoading = false, staffView =
       const apptRef = ref(db, `appointments/${apptId}`);
       await update(apptRef, { status, updatedAt: Date.now() });
 
+      // Push notification for CANCEL or COMPLETED
+      if (status === 'cancelled') {
+        const { push } = await import('firebase/database');
+        await push(ref(db, 'notifications'), {
+          type: 'CANCEL',
+          message: `Booking cancelled for ${appointment.name}`,
+          createdAt: Date.now(),
+          read: false,
+        }).catch(err => console.error('Failed to push notification:', err));
+      }
+
       if (status === 'confirmed') {
         fetch('/api/send-confirmation', {
           method: 'POST',
