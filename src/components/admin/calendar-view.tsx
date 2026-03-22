@@ -786,22 +786,53 @@ export function CalendarView({ appointments }: CalendarViewProps) {
           /* Agenda: hide default since we render custom */
           .rbc-agenda-view { display: none !important; }
 
-          /* Drag and Drop styling */
+          /* Drag and Drop — Enhanced UX */
           .rbc-addons-dnd-resizable {
             position: relative;
             width: 100%;
             height: 100%;
+            transition: transform 0.15s ease, opacity 0.15s ease;
           }
+
+          /* Ghost preview while dragging */
           .rbc-addons-dnd-drag-preview {
-            opacity: 0.6;
-            transform: scale(0.98);
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-            transition: opacity 0.2s, transform 0.2s;
-            z-index: 100;
+            opacity: 0.45;
+            transform: scale(1.04);
+            box-shadow: 0 16px 48px rgba(124,58,237,0.6), 0 4px 12px rgba(0,0,0,0.5);
+            border-radius: 10px !important;
+            transition: none;
+            z-index: 999;
+            pointer-events: none;
           }
+
+          /* Active drag cursor */
           .rbc-addons-dnd-dragger { cursor: grab !important; }
           .rbc-addons-dnd-dragger:active { cursor: grabbing !important; }
-          .rbc-day-slot { max-height: 200px; overflow-y: auto; }
+
+          /* Drop zone highlight when hovering over a valid slot */
+          .rbc-day-slot .rbc-time-slot:hover,
+          .rbc-day-bg:hover {
+            background: rgba(124,58,237,0.1) !important;
+            outline: 1.5px dashed rgba(167,139,250,0.5) !important;
+            outline-offset: -2px;
+            transition: background 0.15s;
+          }
+
+          /* Month row — flexible height, scrollable */
+          .rbc-month-row {
+            max-height: none !important;
+            overflow: visible !important;
+          }
+
+          /* Day slot — scrollable for week/day views */
+          .rbc-day-slot {
+            overflow-y: auto;
+          }
+
+          /* Smooth all event transitions */
+          .rbc-event {
+            transition: transform 0.15s, opacity 0.15s !important;
+          }
         `}</style>
 
         {view !== Views.AGENDA ? (
