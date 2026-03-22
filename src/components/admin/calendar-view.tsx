@@ -57,16 +57,40 @@ const STATUS_ICON: Record<string, React.ElementType> = {
 
 // ─── Custom Event Card ──────────────────────────────────────
 function EventCard({ event }: { event: CalendarEvent }) {
+  const { toast } = useToast();
   const appt = event.appointmentData;
   const color = STATUS_COLOR[event.status] ?? '#a78bfa';
+
+  const handleDragStart = (e: React.DragEvent) => {
+    if (event.status === 'completed') {
+      e.preventDefault();
+      toast({ title: 'Not Allowed', description: 'Completed bookings cannot be rescheduled.', variant: 'destructive' });
+      return;
+    }
+    if (event.status === 'cancelled') {
+      e.preventDefault();
+      toast({ title: 'Not Allowed', description: 'Cancelled bookings cannot be rescheduled.', variant: 'destructive' });
+      return;
+    }
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const apptDate = new Date(appt.date);
+    apptDate.setHours(0, 0, 0, 0);
+    if (apptDate < today) {
+      e.preventDefault();
+      toast({ title: 'Not Allowed', description: 'Past bookings cannot be rescheduled.', variant: 'destructive' });
+      return;
+    }
+
+    e.stopPropagation();
+    e.dataTransfer.setData("bookingId", event.id as string);
+    (window as any).__draggedBookingId = event.id;
+  };
+
   return (
     <div
       draggable={true}
-      onDragStart={(e) => {
-        e.stopPropagation();
-        e.dataTransfer.setData("bookingId", event.id as string);
-        (window as any).__draggedBookingId = event.id;
-      }}
+      onDragStart={handleDragStart}
       onDragEnd={() => {
         (window as any).__draggedBookingId = null;
       }}
@@ -192,18 +216,42 @@ function WeekEventCard({ event }: { event: any }) {
     );
   }
 
+  const { toast } = useToast();
   const appt = event.appointmentData;
   const color = STATUS_COLOR[event.status] ?? '#a78bfa';
+
+  const handleDragStart = (e: React.DragEvent) => {
+    if (event.status === 'completed') {
+      e.preventDefault();
+      toast({ title: 'Not Allowed', description: 'Completed bookings cannot be rescheduled.', variant: 'destructive' });
+      return;
+    }
+    if (event.status === 'cancelled') {
+      e.preventDefault();
+      toast({ title: 'Not Allowed', description: 'Cancelled bookings cannot be rescheduled.', variant: 'destructive' });
+      return;
+    }
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const apptDate = new Date(appt.date);
+    apptDate.setHours(0, 0, 0, 0);
+    if (apptDate < today) {
+      e.preventDefault();
+      toast({ title: 'Not Allowed', description: 'Past bookings cannot be rescheduled.', variant: 'destructive' });
+      return;
+    }
+
+    e.stopPropagation();
+    e.dataTransfer.setData("bookingId", event.id as string);
+    (window as any).__draggedBookingId = event.id;
+  };
+
   return (
     <div
       className="w-full h-full group"
       style={{ padding: '3px 6px', boxSizing: 'border-box' }}
       draggable={true}
-      onDragStart={(e) => {
-        e.stopPropagation();
-        e.dataTransfer.setData("bookingId", event.id as string);
-        (window as any).__draggedBookingId = event.id;
-      }}
+      onDragStart={handleDragStart}
       onDragEnd={() => {
         (window as any).__draggedBookingId = null;
       }}
@@ -441,10 +489,10 @@ export function CalendarView({ appointments }: CalendarViewProps) {
   }, [events, view]);
 
   const isDraggableAuth = useCallback((event: CalendarEvent) => {
-    if (event.status === 'cluster') return false;
     if (event.status === 'completed') return false;
+    if (event.status === 'cancelled') return false;
     
-    // Past bookings cannot be rescheduled rule re-applied securely
+    // Past bookings cannot be rescheduled rule
     const startOfToday = new Date();
     startOfToday.setHours(0, 0, 0, 0);
     const isPast = (event.start as Date) < startOfToday;
@@ -465,14 +513,20 @@ export function CalendarView({ appointments }: CalendarViewProps) {
   }, [isDraggableAuth]);
 
   const onEventDrop = useCallback(async ({ event, start, end, resourceId }: any) => {
-    if (!isDraggableAuth(event)) {
-      toast({ title: "Not Allowed", description: "Past bookings cannot be rescheduled.", variant: "destructive" });
+    if (event.status === 'completed') {
+      toast({ title: "Not Allowed", description: "Completed bookings cannot be rescheduled.", variant: "destructive" });
       return;
     }
-
-    const now = new Date();
-    if (start < now) {
-      toast({ title: "Invalid Reschedule", description: "Cannot move appointments to a past date/time.", variant: "destructive" });
+    if (event.status === 'cancelled') {
+      toast({ title: "Not Allowed", description: "Cancelled bookings cannot be rescheduled.", variant: "destructive" });
+      return;
+    }
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const apptDate = new Date(event.appointmentData.date);
+    apptDate.setHours(0, 0, 0, 0);
+    if (apptDate < today) {
+      toast({ title: "Not Allowed", description: "Past bookings cannot be rescheduled.", variant: "destructive" });
       return;
     }
 
@@ -647,12 +701,11 @@ export function CalendarView({ appointments }: CalendarViewProps) {
           }
 
           /* MONTH GRID */
-          .rbc-month-view { border: 1px solid rgba(255,255,255,0.07) !important; border-radius: 12px; overflow: hidden; }
+          .rbc-month-view { border: 1px solid rgba(255,255,255,0.07) !important; border-radius: 12px; }
           .rbc-month-row { 
             border-color: rgba(255,255,255,0.06) !important; 
             max-height: 180px; 
             overflow-y: auto !important; 
-            overflow-x: hidden !important;
           }
            /* Ensure stacking renders fully rather than hiding */
           .rbc-row-content { overflow: visible !important; }
@@ -673,7 +726,7 @@ export function CalendarView({ appointments }: CalendarViewProps) {
           .rbc-row-segment { padding: 1px 3px; }
           .rbc-event { background: transparent !important; border: none !important; padding: 0 !important; box-shadow: none !important; border-radius: 8px !important; box-sizing: border-box !important; }
           .rbc-event:focus { outline: none; }
-          .rbc-event-content { overflow: hidden; height: 100%; }
+          .rbc-event-content { height: 100%; }
           .rbc-time-view .rbc-event-label { display: none !important; }
 
           /* SHOW MORE LINK */
