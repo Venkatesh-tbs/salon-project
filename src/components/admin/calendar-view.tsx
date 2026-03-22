@@ -61,7 +61,15 @@ function EventCard({ event }: { event: CalendarEvent }) {
   const color = STATUS_COLOR[event.status] ?? '#a78bfa';
   return (
     <div
-      className="group w-full rounded-lg px-2 py-1 text-[11px] leading-tight overflow-hidden transition-all duration-150 hover:scale-[1.02] cursor-pointer"
+      draggable={true}
+      onDragStart={(e) => {
+        e.stopPropagation();
+        console.log("Dragging:", event.id);
+        e.dataTransfer.setData("bookingId", event.id as string);
+        // Expose event id on window for onDropFromOutside if needed
+        (window as any).__draggedBookingId = event.id;
+      }}
+      className="group w-full h-full rounded-lg px-2 py-1 text-[11px] leading-tight overflow-hidden transition-all duration-150 hover:scale-[1.02] cursor-grab active:cursor-grabbing"
       style={{
         background: `${color}14`,
         borderLeft: `2.5px solid ${color}`,
@@ -189,9 +197,16 @@ function WeekEventCard({ event }: { event: any }) {
     <div
       className="w-full h-full group"
       style={{ padding: '3px 6px', boxSizing: 'border-box' }}
+      draggable={true}
+      onDragStart={(e) => {
+        e.stopPropagation();
+        console.log("Dragging:", event.id);
+        e.dataTransfer.setData("bookingId", event.id as string);
+        (window as any).__draggedBookingId = event.id;
+      }}
     >
       <div
-        className="w-full h-full rounded-xl px-3 py-3 transition-all duration-300 cursor-pointer flex flex-col"
+        className="w-full h-full rounded-xl px-3 py-3 transition-all duration-300 cursor-grab active:cursor-grabbing flex flex-col"
         style={{
           background: `${color}1E`,
           borderLeft: `5px solid ${color}`,
@@ -520,6 +535,18 @@ export function CalendarView({ appointments }: CalendarViewProps) {
     }
   }, [allEvents, toast]);
 
+  const handleDropFromOutside = useCallback((args: any) => {
+    console.log("Dropped on slot");
+    const draggedId = (window as any).__draggedBookingId;
+    if (!draggedId) return;
+    
+    const event = allEvents.find(e => e.id === draggedId);
+    if (event) {
+      onEventDrop({ ...args, event });
+    }
+    (window as any).__draggedBookingId = null;
+  }, [allEvents, onEventDrop]);
+
   const openPanel = useCallback((date: Date, evts: CalendarEvent[]) => {
     setPanel({ open: true, date, events: evts });
   }, []);
@@ -579,7 +606,11 @@ export function CalendarView({ appointments }: CalendarViewProps) {
   return (
     <>
       {/* ── Calendar Card ── */}
-      <div className="relative rounded-2xl border border-white/10 p-4 min-h-[620px]" style={{ background: 'rgba(255,255,255,0.02)' }}>
+      <div 
+        className="relative rounded-2xl border border-white/10 p-4 min-h-[620px]" 
+        style={{ background: 'rgba(255,255,255,0.02)', pointerEvents: 'auto' }}
+        onDragOver={(e) => e.preventDefault()}
+      >
         <style>{`
           /* Base reset */
           .rbc-calendar { background: transparent; color: rgba(255,255,255,0.85); font-family: inherit; }
@@ -699,7 +730,24 @@ export function CalendarView({ appointments }: CalendarViewProps) {
             events={displayEvents}
             startAccessor="start"
             endAccessor="end"
-            style={{ height: 600 }}
+            titleAccessor="title"
+            style={{ height: '620px' }}
+            components={{
+              month: { event: ({ event }) => <EventCard event={event as CalendarEvent} /> },
+              week:  { event: ({ event }) => <WeekEventCard event={event as CalendarEvent} /> },
+              day:   { event: ({ event }) => <WeekEventCard event={event as CalendarEvent} /> },
+            }}
+            resources={resources.length > 0 ? resources : undefined}
+            resourceIdAccessor={(r: any) => r.resourceId}
+            resourceTitleAccessor={(r: any) => r.resourceTitle}
+            draggableAccessor={isDraggableAuth as any}
+            resizableAccessor={() => false}
+            onEventDrop={onEventDrop}
+            onDropFromOutside={handleDropFromOutside}
+            dragFromOutsideItem={() => {
+              const id = (window as any).__draggedBookingId;
+              return allEvents.find(e => e.id === id) || ({} as any);
+            }}
             eventPropGetter={eventStyleGetter as any}
             views={[Views.MONTH, Views.WEEK, Views.DAY, Views.AGENDA]}
             view={view}
@@ -716,22 +764,6 @@ export function CalendarView({ appointments }: CalendarViewProps) {
             formats={{ eventTimeRangeFormat: () => '' }}
             tooltipAccessor={null as any}
             messages={{ showMore: (count: number) => `+${count} bookings` }}
-            
-            // Resources for Day View (Staff Columns)
-            resources={resources.length > 0 ? resources : undefined}
-            resourceIdAccessor={(r: any) => r.resourceId}
-            resourceTitleAccessor={(r: any) => r.resourceTitle}
-            
-            // Drag and Drop props
-            draggableAccessor={isDraggableAuth as any}
-            resizableAccessor={() => false}
-            onEventDrop={onEventDrop}
-
-            components={{
-              month: { event: ({ event }) => <EventCard event={event as CalendarEvent} /> },
-              week:  { event: ({ event }) => <WeekEventCard event={event as CalendarEvent} /> },
-              day:   { event: ({ event }) => <WeekEventCard event={event as CalendarEvent} /> },
-            }}
           />
         ) : (
           <div>
