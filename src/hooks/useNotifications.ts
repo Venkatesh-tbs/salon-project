@@ -12,15 +12,16 @@ export interface AppNotification {
   createdAt: number;
   read: boolean;
   staffId?: string | null;
+  hiddenFor?: Record<string, boolean>; // per-user clear support
 }
 
 /**
- * Resolves the current user's staffId from Firebase.
- * Uses session_email cookie to look up staff members.
- * Returns null for admins (who have no staff entry).
+ * Resolves the current user context from Firebase.
+ * - Staff: returns their staffId (used as the userId key)
+ * - Admin: returns '__admin__' as a stable key
  */
-async function resolveCurrentStaffId(): Promise<{ staffId: string | null; isAdmin: boolean }> {
-  if (typeof document === 'undefined') return { staffId: null, isAdmin: true };
+async function resolveUserContext(): Promise<{ userId: string; currentStaffId: string | null; isAdmin: boolean }> {
+  if (typeof document === 'undefined') return { userId: '__admin__', currentStaffId: null, isAdmin: true };
 
   const rawEmail = document.cookie
     .split('; ')
@@ -30,15 +31,13 @@ async function resolveCurrentStaffId(): Promise<{ staffId: string | null; isAdmi
   const staffEmailVal = decodeURIComponent(rawEmail || '').trim().toLowerCase();
 
   if (!staffEmailVal) {
-    // No session email found — treat as admin (sees global notifications)
-    console.log('[Notifications] No session_email cookie found — treating as global user');
-    return { staffId: null, isAdmin: true };
+    console.log('[Notifications] No session_email cookie — treating as admin');
+    return { userId: '__admin__', currentStaffId: null, isAdmin: true };
   }
 
   const staffSnap = await get(ref(db, 'staff'));
   if (!staffSnap.exists()) {
-    console.log('[Notifications] No staff node found in DB');
-    return { staffId: null, isAdmin: true };
+    return { userId: '__admin__', currentStaffId: null, isAdmin: true };
   }
 
   let resolvedStaffId: string | null = null;
@@ -47,33 +46,34 @@ async function resolveCurrentStaffId(): Promise<{ staffId: string | null; isAdmi
     const memberEmail = (member.email || '').trim().toLowerCase();
     if (memberEmail === staffEmailVal) {
       resolvedStaffId = member.staffId || child.key;
-      console.log('[Notifications] Resolved staffId:', resolvedStaffId, 'for email:', staffEmailVal);
+      console.log('[Notifications] Resolved staffId:', resolvedStaffId);
     }
   });
 
   if (resolvedStaffId) {
-    return { staffId: resolvedStaffId, isAdmin: false };
+    return { userId: resolvedStaffId, currentStaffId: resolvedStaffId, isAdmin: false };
   }
 
-  // Email found but no matching staff record — treat as admin
-  console.log('[Notifications] Email not matched in staff node — treating as admin for:', staffEmailVal);
-  return { staffId: null, isAdmin: true };
+  console.log('[Notifications] No staff match — treating as admin');
+  return { userId: '__admin__', currentStaffId: null, isAdmin: true };
 }
 
 export function useNotifications() {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const { toast } = useToast();
-  // Track whether this is the very first snapshot received
   const isFirstLoad = useRef(true);
-  // Track previously seen IDs to detect newcomers across re-renders
   const seenIds = useRef(new Set<string>());
+  // Store resolved user context in a ref so async functions can access it
+  const userCtx = useRef<{ userId: string; currentStaffId: string | null; isAdmin: boolean } | null>(null);
 
   useEffect(() => {
     let unsubscribeNotifications: (() => void) | null = null;
 
     const setupNotifications = async () => {
-      const { staffId: currentStaffId, isAdmin } = await resolveCurrentStaffId();
+      const ctx = await resolveUserContext();
+      userCtx.current = ctx;
+      const { userId, currentStaffId, isAdmin } = ctx;
 
       const notificationsRef = ref(db, 'notifications');
 
@@ -90,25 +90,23 @@ export function useNotifications() {
           ...data[key],
         }));
 
-        // Filter logic:
-        // - Admin (isAdmin=true): sees ALL notifications (global + targeted)
-        // - Staff (isAdmin=false): sees ONLY notifications strictly assigned to their staffId
+        // 1. Filter by role/staffId
         parsed = parsed.filter((n) => {
-          if (isAdmin) return true; // admins see everything
-          // staff: strict match only — global (null/undefined staffId) is NOT shown to staff
+          if (isAdmin) return true;
           return n.staffId === currentStaffId;
         });
+
+        // 2. Filter out notifications this user has personally cleared (hiddenFor)
+        parsed = parsed.filter((n) => !n.hiddenFor?.[userId]);
 
         parsed.sort((a, b) => b.createdAt - a.createdAt);
 
         const unread = parsed.filter((n) => !n.read).length;
 
-        // Detect new unread items not yet seen — works on first load and real-time updates
+        // Detect genuinely new unread notifications (not yet seen this session)
         const newItems = parsed.filter((n) => !n.read && !seenIds.current.has(n.id));
-        // Update the seen-IDs registry
         parsed.forEach((n) => seenIds.current.add(n.id));
 
-        // On first load: don't toast existing backlog — just register them as seen
         if (!isFirstLoad.current) {
           const titleMap: Record<string, string> = {
             BOOKING: '📅 New Booking!',
@@ -118,7 +116,7 @@ export function useNotifications() {
             COMPLETED: '✅ Session Complete',
           };
           newItems.forEach((n) => {
-            console.log('[Notifications] Toasting:', n.type, n.message, 'staffId:', n.staffId);
+            console.log('[Notifications] Toast:', n.type, '| staffId:', n.staffId);
             toast({
               title: titleMap[n.type] ?? 'Notification',
               description: n.message,
@@ -127,11 +125,10 @@ export function useNotifications() {
           });
         } else {
           isFirstLoad.current = false;
-          console.log('[Notifications] Initial load — registered', parsed.length, 'notifications, skipping backlog toasts');
+          console.log('[Notifications] Initial load —', parsed.length, 'notifications registered');
         }
 
         setNotifications(parsed);
-
         setUnreadCount(unread);
       });
     };
@@ -147,7 +144,7 @@ export function useNotifications() {
     try {
       await update(ref(db, `notifications/${id}`), { read: true });
     } catch (err) {
-      console.error('Failed to mark notification as read:', err);
+      console.error('Failed to mark as read:', err);
     }
   };
 
@@ -155,9 +152,7 @@ export function useNotifications() {
     try {
       const updates: Record<string, any> = {};
       notifications.forEach((n) => {
-        if (!n.read) {
-          updates[`${n.id}/read`] = true;
-        }
+        if (!n.read) updates[`${n.id}/read`] = true;
       });
       if (Object.keys(updates).length > 0) {
         await update(ref(db, 'notifications'), updates);
@@ -168,15 +163,20 @@ export function useNotifications() {
   };
 
   /**
-   * Removes only the notifications currently visible to this user from Firebase.
-   * Admins remove all; staff remove only their own targeted notifications.
+   * Per-user clear: marks notifications as hidden for the current user only.
+   * Other users' views are completely unaffected.
    */
   const clearAll = async () => {
+    if (!userCtx.current) return;
+    const { userId } = userCtx.current;
     try {
-      const { remove } = await import('firebase/database');
-      await Promise.all(
-        notifications.map((n) => remove(ref(db, `notifications/${n.id}`)))
-      );
+      const updates: Record<string, any> = {};
+      notifications.forEach((n) => {
+        updates[`${n.id}/hiddenFor/${userId}`] = true;
+      });
+      if (Object.keys(updates).length > 0) {
+        await update(ref(db, 'notifications'), updates);
+      }
     } catch (err) {
       console.error('Failed to clear notifications:', err);
     }
