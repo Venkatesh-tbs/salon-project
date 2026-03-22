@@ -304,9 +304,9 @@ export function AppointmentForm({ initialData, onSuccess }: AppointmentFormProps
   const watchStaff = form.watch("staff");
   const watchDate = form.watch("date");
 
-  // Load Staff based on Service
+  // Load Staff based on Service + Date
   React.useEffect(() => {
-    if (!watchService) return;
+    if (!watchService || !watchDate) return;
     setStaffLoading(true);
     form.setValue("staff", "");
     form.setValue("time", "");
@@ -315,12 +315,12 @@ export function AppointmentForm({ initialData, onSuccess }: AppointmentFormProps
     const svcObj = services.find(s => s.name === watchService);
     const svcId = svcObj?.id || watchService;
 
-    fetch(`/api/staff/for-service/${svcId}`)
+    fetch(`/api/staff/for-service/${svcId}?date=${watchDate}`)
       .then(r => r.json())
       .then(data => setStaffList(data || []))
       .catch(() => setStaffList([]))
       .finally(() => setStaffLoading(false));
-  }, [watchService, services, form]);
+  }, [watchService, watchDate, services, form]);
 
   // Load Slots based on Staff + Date
   React.useEffect(() => {
@@ -706,8 +706,8 @@ export function AppointmentForm({ initialData, onSuccess }: AppointmentFormProps
                             {!watchService ? "Select a service first" : staffLoading ? "Loading stylists..." : "Choose your stylist"}
                           </option>
                           {staffList.map((st: any) => (
-                            <option key={st.staffId} value={st.staffId} className="bg-[#1a1625] text-white py-2">
-                              {st.name} - {st.role} 
+                            <option key={st.staffId} value={st.staffId} className="bg-[#1a1625] text-white py-2" disabled={st.isOnLeave}>
+                              {st.name} - {st.role} {st.isOnLeave ? "(On Leave)" : ""}
                             </option>
                           ))}
                         </select>

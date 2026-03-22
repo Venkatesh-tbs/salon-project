@@ -10,6 +10,9 @@ const DEFAULT_STAFF = [
 
 export async function GET(req: Request, { params }: { params: Promise<{ serviceId: string }> }) {
   const serviceId = (await params).serviceId;
+  const { searchParams } = new URL(req.url);
+  const dateStr = searchParams.get("date");
+
   try {
     const staffRef = ref(db, "staff");
     let snapshot = await get(staffRef);
@@ -23,11 +26,23 @@ export async function GET(req: Request, { params }: { params: Promise<{ serviceI
     }
 
     const staffData = snapshot.val();
-    const sfList = Object.values(staffData).filter(
+    let sfList = Object.values(staffData).filter(
       // We loosen the serviceId check because RTDB dynamic services won't match "svc_001" exactly.
       // In a real app we'd map them correctly, but for demo we show all active staff.
       (s: any) => s.isActive 
     );
+    
+    if (dateStr) {
+      const leavesRef = ref(db, "staffLeaves");
+      const leavesSnap = await get(leavesRef);
+      if (leavesSnap.exists()) {
+        const leavesData = leavesSnap.val();
+        sfList = sfList.map((st: any) => {
+          const isOnLeave = leavesData[st.staffId] && leavesData[st.staffId][dateStr] === true;
+          return { ...st, isOnLeave };
+        });
+      }
+    }
     
     return NextResponse.json(sfList);
   } catch (err: any) {
