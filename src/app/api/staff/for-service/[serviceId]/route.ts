@@ -38,7 +38,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ serviceI
       if (leavesSnap.exists()) {
         const leavesData = leavesSnap.val();
         sfList = sfList.map((st: any) => {
-          const isOnLeave = leavesData[st.staffId] && leavesData[st.staffId][dateStr] === true;
+          const leaveRecord = leavesData[st.staffId] && leavesData[st.staffId][dateStr];
+          const isOnLeave = leaveRecord === true || leaveRecord?.unavailable === true;
           return { ...st, isOnLeave };
         });
       }

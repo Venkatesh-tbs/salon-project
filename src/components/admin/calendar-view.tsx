@@ -533,7 +533,7 @@ export function CalendarView({ appointments }: CalendarViewProps) {
       const { ref: dbRef, get: dbGet } = await import('firebase/database');
       const leaveRef = dbRef(db, `staffLeaves/${dropStaffId}/${dropDate}`);
       const leaveSnap = await dbGet(leaveRef);
-      if (leaveSnap.exists() && leaveSnap.val() === true) {
+      if (leaveSnap.exists() && (leaveSnap.val() === true || leaveSnap.val()?.unavailable === true)) {
         toast({ title: "Not Allowed", description: "Staff member is on leave for this date.", variant: "destructive" });
         return;
       }

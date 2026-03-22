@@ -45,7 +45,7 @@ export async function GET(req: Request) {
     // Check staff leave
     const leaveRef = ref(db, `staffLeaves/${staffId}/${date}`);
     const leaveSnap = await get(leaveRef);
-    if (leaveSnap.exists() && leaveSnap.val() === true) {
+    if (leaveSnap.exists() && (leaveSnap.val() === true || leaveSnap.val()?.unavailable === true)) {
       return NextResponse.json({ slots: [] }); // Return empty slots if on leave
     }
     
