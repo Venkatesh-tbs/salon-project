@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { ref, onValue, update, get, runTransaction } from 'firebase/database';
 import { db } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
+import { useUser } from '@/firebase';
 
 export type NotificationType = 'BOOKING' | 'CANCEL' | 'RESCHEDULE' | 'CONFIRMED' | 'COMPLETED';
 
@@ -17,11 +18,11 @@ export interface AppNotification {
 
 /**
  * Resolves the current user context from Firebase.
- * - Staff: returns their staffId (used as the userId key)
- * - Admin: returns '__admin__' as a stable key
+ * Uses the guaranteed-unique Firebase Auth UID as the userId key.
  */
-async function resolveUserContext(): Promise<{ userId: string; currentStaffId: string | null; isAdmin: boolean }> {
-  if (typeof document === 'undefined') return { userId: '__admin__', currentStaffId: null, isAdmin: true };
+async function resolveUserContext(authUid?: string): Promise<{ userId: string; currentStaffId: string | null; isAdmin: boolean }> {
+  const defaultUserId = authUid || 'unauthenticated';
+  if (typeof document === 'undefined') return { userId: defaultUserId, currentStaffId: null, isAdmin: true };
 
   const rawEmail = document.cookie
     .split('; ')
@@ -31,13 +32,13 @@ async function resolveUserContext(): Promise<{ userId: string; currentStaffId: s
   const staffEmailVal = decodeURIComponent(rawEmail || '').trim().toLowerCase();
 
   if (!staffEmailVal) {
-    console.log('[Notifications] No session_email cookie — treating as admin');
-    return { userId: '__admin__', currentStaffId: null, isAdmin: true };
+    console.log(`[Notifications] No session_email cookie — treating as admin (${defaultUserId})`);
+    return { userId: defaultUserId, currentStaffId: null, isAdmin: true };
   }
 
   const staffSnap = await get(ref(db, 'staff'));
   if (!staffSnap.exists()) {
-    return { userId: '__admin__', currentStaffId: null, isAdmin: true };
+    return { userId: defaultUserId, currentStaffId: null, isAdmin: true };
   }
 
   let resolvedStaffId: string | null = null;
@@ -51,14 +52,17 @@ async function resolveUserContext(): Promise<{ userId: string; currentStaffId: s
   });
 
   if (resolvedStaffId) {
-    return { userId: resolvedStaffId, currentStaffId: resolvedStaffId, isAdmin: false };
+    // Both are unique, use authUid if present, fallback to staffId
+    const finalUserId = authUid || resolvedStaffId;
+    return { userId: finalUserId, currentStaffId: resolvedStaffId, isAdmin: false };
   }
 
-  console.log('[Notifications] No staff match — treating as admin');
-  return { userId: '__admin__', currentStaffId: null, isAdmin: true };
+  console.log(`[Notifications] No staff match — treating as admin (${defaultUserId})`);
+  return { userId: defaultUserId, currentStaffId: null, isAdmin: true };
 }
 
 export function useNotifications() {
+  const { user, loading: authLoading } = useUser();
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const { toast } = useToast();
@@ -68,10 +72,13 @@ export function useNotifications() {
   const userCtx = useRef<{ userId: string; currentStaffId: string | null; isAdmin: boolean } | null>(null);
 
   useEffect(() => {
+    if (authLoading) return; // Wait for Firebase Auth to resolve the UID
+
     let unsubscribeNotifications: (() => void) | null = null;
+    const authUid = user?.uid;
 
     const setupNotifications = async () => {
-      const ctx = await resolveUserContext();
+      const ctx = await resolveUserContext(authUid);
       userCtx.current = ctx;
       const { userId, currentStaffId, isAdmin } = ctx;
 
@@ -138,7 +145,7 @@ export function useNotifications() {
     return () => {
       if (unsubscribeNotifications) unsubscribeNotifications();
     };
-  }, [toast]);
+  }, [toast, user, authLoading]);
 
   const markAsRead = async (id: string) => {
     try {
