@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { ref, onValue, update, get } from 'firebase/database';
 import { db } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
@@ -64,6 +64,10 @@ export function useNotifications() {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const { toast } = useToast();
+  // Track whether this is the very first snapshot received
+  const isFirstLoad = useRef(true);
+  // Track previously seen IDs to detect newcomers across re-renders
+  const seenIds = useRef(new Set<string>());
 
   useEffect(() => {
     let unsubscribeNotifications: (() => void) | null = null;
@@ -100,28 +104,34 @@ export function useNotifications() {
 
         const unread = parsed.filter((n) => !n.read).length;
 
-        setNotifications((prev) => {
-          if (prev.length > 0) {
-            const prevIds = new Set(prev.map((p) => p.id));
-            const newItems = parsed.filter((n) => !prevIds.has(n.id) && !n.read);
+        // Detect new unread items not yet seen — works on first load and real-time updates
+        const newItems = parsed.filter((n) => !n.read && !seenIds.current.has(n.id));
+        // Update the seen-IDs registry
+        parsed.forEach((n) => seenIds.current.add(n.id));
 
-            newItems.forEach((n) => {
-              const titleMap: Record<string, string> = {
-                BOOKING: '📅 New Booking!',
-                CANCEL: '❌ Booking Cancelled',
-                RESCHEDULE: '🔄 Booking Updated',
-                CONFIRMED: '✅ Booking Confirmed',
-                COMPLETED: '✅ Session Complete',
-              };
-              toast({
-                title: titleMap[n.type] ?? 'Notification',
-                description: n.message,
-                duration: 5000,
-              });
+        // On first load: don't toast existing backlog — just register them as seen
+        if (!isFirstLoad.current) {
+          const titleMap: Record<string, string> = {
+            BOOKING: '📅 New Booking!',
+            CANCEL: '❌ Booking Cancelled',
+            RESCHEDULE: '🔄 Booking Updated',
+            CONFIRMED: '✅ Booking Confirmed',
+            COMPLETED: '✅ Session Complete',
+          };
+          newItems.forEach((n) => {
+            console.log('[Notifications] Toasting:', n.type, n.message, 'staffId:', n.staffId);
+            toast({
+              title: titleMap[n.type] ?? 'Notification',
+              description: n.message,
+              duration: 5000,
             });
-          }
-          return parsed;
-        });
+          });
+        } else {
+          isFirstLoad.current = false;
+          console.log('[Notifications] Initial load — registered', parsed.length, 'notifications, skipping backlog toasts');
+        }
+
+        setNotifications(parsed);
 
         setUnreadCount(unread);
       });

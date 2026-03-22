@@ -9,6 +9,7 @@ import { ref, onValue, off, update } from 'firebase/database';
 import { Appointment } from '@/firebase/db';
 import { logoutFlow } from '@/firebase/auth/client-flow';
 import { useRouter } from 'next/navigation';
+import { NotificationsBell } from '@/components/admin/notifications-bell';
 
 const STATUS_COLORS: Record<string, string> = {
   pending: 'text-yellow-400 bg-yellow-400/10 border-yellow-400/20',
@@ -112,13 +113,16 @@ export default function StaffDashboardPage() {
             <p className="text-white/30 text-xs">{todayDisplay}</p>
           </div>
         </div>
-        <button
-          onClick={handleLogout}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl text-white/40 hover:text-white border border-white/10 hover:border-white/20 text-sm transition-all"
-        >
-          <LogOut className="w-4 h-4" />
-          Logout
-        </button>
+        <div className="flex items-center gap-3">
+          <NotificationsBell />
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl text-white/40 hover:text-white border border-white/10 hover:border-white/20 text-sm transition-all"
+          >
+            <LogOut className="w-4 h-4" />
+            Logout
+          </button>
+        </div>
       </header>
 
       <main className="relative z-10 max-w-3xl mx-auto px-4 py-8 md:py-12">
