@@ -91,13 +91,12 @@ export function useNotifications() {
         }));
 
         // Filter logic:
-        // - Admin (isAdmin=true, currentStaffId=null): sees ALL notifications (global + targeted)
-        // - Staff (isAdmin=false, currentStaffId=some_id): sees global (staffId null/undefined) OR their own
-        // - Backward compat: notifications without staffId are global — visible to all
+        // - Admin (isAdmin=true): sees ALL notifications (global + targeted)
+        // - Staff (isAdmin=false): sees ONLY notifications strictly assigned to their staffId
         parsed = parsed.filter((n) => {
           if (isAdmin) return true; // admins see everything
-          // staff see notifications where staffId is absent/null OR matches their staffId
-          return !n.staffId || n.staffId === currentStaffId;
+          // staff: strict match only — global (null/undefined staffId) is NOT shown to staff
+          return n.staffId === currentStaffId;
         });
 
         parsed.sort((a, b) => b.createdAt - a.createdAt);
