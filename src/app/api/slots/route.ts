@@ -41,6 +41,13 @@ export async function GET(req: Request) {
     if (!staffSnap.exists()) {
       return NextResponse.json({ error: "Staff not found" }, { status: 404 });
     }
+
+    // Check staff leave
+    const leaveRef = ref(db, `staffLeaves/${staffId}/${date}`);
+    const leaveSnap = await get(leaveRef);
+    if (leaveSnap.exists() && leaveSnap.val() === true) {
+      return NextResponse.json({ slots: [] }); // Return empty slots if on leave
+    }
     
     // In this mock adaptation, if availability is not explicitly defined, we assume 09:00 to 20:00 everyday.
     const staff = staffSnap.val();

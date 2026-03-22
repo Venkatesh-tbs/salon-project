@@ -521,6 +521,24 @@ export function CalendarView({ appointments }: CalendarViewProps) {
       toast({ title: "Not Allowed", description: "Cancelled bookings cannot be rescheduled.", variant: "destructive" });
       return;
     }
+
+    const year = start.getFullYear();
+    const month = String(start.getMonth() + 1).padStart(2, '0');
+    const day = String(start.getDate()).padStart(2, '0');
+    const dropDate = `${year}-${month}-${day}`;
+
+    const dropStaffId = resourceId === 'unassigned' ? '' : resourceId;
+
+    if (dropStaffId) {
+      const { ref: dbRef, get: dbGet } = await import('firebase/database');
+      const leaveRef = dbRef(db, `staffLeaves/${dropStaffId}/${dropDate}`);
+      const leaveSnap = await dbGet(leaveRef);
+      if (leaveSnap.exists() && leaveSnap.val() === true) {
+        toast({ title: "Not Allowed", description: "Staff member is on leave for this date.", variant: "destructive" });
+        return;
+      }
+    }
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const apptDate = new Date(event.appointmentData.date);
