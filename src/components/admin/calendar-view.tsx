@@ -723,14 +723,14 @@ export function CalendarView({ appointments }: CalendarViewProps) {
           .rbc-day-bg:hover { background: rgba(124,58,237,0.06) !important; }
 
           /* EVENT SLOTS */
-          .rbc-row-segment { padding: 1px 3px; }
+          .rbc-row-segment { padding: 1px 3px; max-height: none !important; }
           .rbc-event { background: transparent !important; border: none !important; padding: 0 !important; box-shadow: none !important; border-radius: 8px !important; box-sizing: border-box !important; }
           .rbc-event:focus { outline: none; }
           .rbc-event-content { height: 100%; }
           .rbc-time-view .rbc-event-label { display: none !important; }
 
           /* SHOW MORE LINK */
-          .rbc-show-more {
+          .rbc-show-more { display: none !important; }
             color: #a78bfa;
             font-size: 10px;
             font-weight: 700;
@@ -820,8 +820,11 @@ export function CalendarView({ appointments }: CalendarViewProps) {
 
           /* Month row — flexible height, scrollable */
           .rbc-month-row {
-            max-height: none !important;
-            overflow: visible !important;
+            min-height: 150px !important;
+            height: auto !important;
+            max-height: 250px;
+            overflow-y: auto !important;
+            overflow-x: visible !important;
           }
 
           /* Day slot — scrollable for week/day views */
@@ -832,6 +835,7 @@ export function CalendarView({ appointments }: CalendarViewProps) {
           /* Smooth all event transitions */
           .rbc-event {
             transition: transform 0.15s, opacity 0.15s !important;
+            display: block !important;
           }
         `}</style>
 
