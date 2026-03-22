@@ -87,7 +87,7 @@ export function AiSummaryCard({ appointments }: { appointments: Appointment[] })
   };
 
   return (
-    <div className="relative group rounded-2xl p-7 text-white flex-1 h-full overflow-hidden hover-lift shadow-[0_10px_40px_rgba(123,47,247,0.2)]">
+    <div className="relative group rounded-2xl p-5 text-white overflow-hidden hover-lift shadow-[0_10px_40px_rgba(123,47,247,0.2)]">
       {/* Animated Deep Gradient Background */}
       <div className="absolute inset-0 bg-gradient-to-br from-[#2a0e45] via-brand-purple to-brand-pink bg-[length:200%_200%] animate-[gradient_8s_ease_infinite] opacity-90"></div>
       
@@ -96,14 +96,14 @@ export function AiSummaryCard({ appointments }: { appointments: Appointment[] })
       
       {/* Content */}
       <div className="relative z-10 h-full flex flex-col">
-        <div className="flex items-center gap-3 mb-6">
+        <div className="flex items-center gap-3 mb-3">
           <div className="p-2 bg-white/10 rounded-lg backdrop-blur-md border border-white/20 shadow-inner">
             <Sparkles className="h-5 w-5 text-brand-pink fill-brand-pink/20 animate-pulse" />
           </div>
           <h3 className="font-heading font-semibold tracking-wide text-lg text-white/90">Aura AI Insight</h3>
         </div>
         
-        <div className="flex-1 bg-white/5 border border-white/10 rounded-xl p-5 backdrop-blur-md shadow-inner">
+        <div className="bg-white/5 border border-white/10 rounded-xl p-4 backdrop-blur-md shadow-inner">
           <p className="text-[15px] leading-relaxed text-white/80 font-medium">
             {getSummaryText()}
           </p>

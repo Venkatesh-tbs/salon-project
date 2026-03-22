@@ -3,11 +3,11 @@ import { Users, ArrowUpRight } from "lucide-react";
 
 export function RecentClients({ appointments }: { appointments: Appointment[] }) {
   // Filter for unique clients
-  const uniqueClients = Array.from(new Map(appointments.map(item => [item.name.toLowerCase().trim(), item])).values()).slice(0, 4);
+  const uniqueClients = Array.from(new Map(appointments.map(item => [item.name.toLowerCase().trim(), item])).values()).slice(0, 5);
 
   return (
     <div className="glass-panel p-6 rounded-2xl flex flex-col h-full">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-heading font-semibold text-white flex items-center gap-2">
           <Users className="w-5 h-5 text-brand-pink" />
           Recent Clients
