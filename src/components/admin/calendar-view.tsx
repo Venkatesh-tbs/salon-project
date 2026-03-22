@@ -64,10 +64,11 @@ function EventCard({ event }: { event: CalendarEvent }) {
       draggable={true}
       onDragStart={(e) => {
         e.stopPropagation();
-        console.log("Dragging:", event.id);
         e.dataTransfer.setData("bookingId", event.id as string);
-        // Expose event id on window for onDropFromOutside if needed
         (window as any).__draggedBookingId = event.id;
+      }}
+      onDragEnd={() => {
+        (window as any).__draggedBookingId = null;
       }}
       className="group w-full h-full rounded-lg px-2 py-1 text-[11px] leading-tight overflow-hidden transition-all duration-150 hover:scale-[1.02] cursor-grab active:cursor-grabbing"
       style={{
@@ -200,9 +201,11 @@ function WeekEventCard({ event }: { event: any }) {
       draggable={true}
       onDragStart={(e) => {
         e.stopPropagation();
-        console.log("Dragging:", event.id);
         e.dataTransfer.setData("bookingId", event.id as string);
         (window as any).__draggedBookingId = event.id;
+      }}
+      onDragEnd={() => {
+        (window as any).__draggedBookingId = null;
       }}
     >
       <div
@@ -405,6 +408,12 @@ export function CalendarView({ appointments }: CalendarViewProps) {
   const allEvents = useMemo<CalendarEvent[]>(() => {
     return appointments
       .filter(a => a.date && a.time && a.name && a.service)
+      .sort((a, b) => {
+        // Enforce exact sorting consistency by startTime as requested
+        const timeA = new Date(`${a.date}T${a.time}`).getTime();
+        const timeB = new Date(`${b.date}T${b.time}`).getTime();
+        return timeA - timeB;
+      })
       .map(a => {
         const [year, month, day] = a.date.split('-').map(Number);
         const [hour, minute] = a.time.split(':').map(Number);
@@ -434,7 +443,13 @@ export function CalendarView({ appointments }: CalendarViewProps) {
   const isDraggableAuth = useCallback((event: CalendarEvent) => {
     if (event.status === 'cluster') return false;
     if (event.status === 'completed') return false;
-    // Allow dragging any event regardless of date.
+    
+    // Past bookings cannot be rescheduled rule re-applied securely
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    const isPast = (event.start as Date) < startOfToday;
+    if (isPast) return false;
+    
     return true;
   }, []);
 
@@ -451,11 +466,15 @@ export function CalendarView({ appointments }: CalendarViewProps) {
 
   const onEventDrop = useCallback(async ({ event, start, end, resourceId }: any) => {
     if (!isDraggableAuth(event)) {
-      toast({ title: "Not Allowed", description: "Completed bookings cannot be rescheduled.", variant: "destructive" });
+      toast({ title: "Not Allowed", description: "Past bookings cannot be rescheduled.", variant: "destructive" });
       return;
     }
 
-    // Removed the "start < now" check so admins can freely drag anywhere for manual overrides and testing.
+    const now = new Date();
+    if (start < now) {
+      toast({ title: "Invalid Reschedule", description: "Cannot move appointments to a past date/time.", variant: "destructive" });
+      return;
+    }
 
     let updatedStaffId = event.appointmentData.staffId || '';
     let updatedStaffName = event.appointmentData.staffName || '';
@@ -629,7 +648,14 @@ export function CalendarView({ appointments }: CalendarViewProps) {
 
           /* MONTH GRID */
           .rbc-month-view { border: 1px solid rgba(255,255,255,0.07) !important; border-radius: 12px; overflow: hidden; }
-          .rbc-month-row { border-color: rgba(255,255,255,0.06) !important; }
+          .rbc-month-row { 
+            border-color: rgba(255,255,255,0.06) !important; 
+            max-height: 180px; 
+            overflow-y: auto !important; 
+            overflow-x: hidden !important;
+          }
+           /* Ensure stacking renders fully rather than hiding */
+          .rbc-row-content { overflow: visible !important; }
           .rbc-day-bg + .rbc-day-bg { border-color: rgba(255,255,255,0.06) !important; }
           .rbc-off-range-bg { background: rgba(0,0,0,0.18); }
           .rbc-today { background: rgba(124,58,237,0.07) !important; }
@@ -733,9 +759,9 @@ export function CalendarView({ appointments }: CalendarViewProps) {
             titleAccessor="title"
             style={{ height: '620px' }}
             components={{
-              month: { event: ({ event }) => <EventCard event={event as CalendarEvent} /> },
-              week:  { event: ({ event }) => <WeekEventCard event={event as CalendarEvent} /> },
-              day:   { event: ({ event }) => <WeekEventCard event={event as CalendarEvent} /> },
+              month: { event: ({ event }) => <EventCard key={(event as CalendarEvent).id} event={event as CalendarEvent} /> },
+              week:  { event: ({ event }) => <WeekEventCard key={(event as CalendarEvent).id} event={event as CalendarEvent} /> },
+              day:   { event: ({ event }) => <WeekEventCard key={(event as CalendarEvent).id} event={event as CalendarEvent} /> },
             }}
             resources={resources.length > 0 ? resources : undefined}
             resourceIdAccessor={(r: any) => r.resourceId}
