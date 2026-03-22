@@ -529,13 +529,45 @@ export function CalendarView({ appointments }: CalendarViewProps) {
 
     const dropStaffId = resourceId === 'unassigned' ? '' : resourceId;
 
+    const durationMins = event.appointmentData.serviceDuration || 30;
+    const newStartMins = start.getHours() * 60 + start.getMinutes();
+    const newEndMins = newStartMins + durationMins;
+
     if (dropStaffId) {
       const { ref: dbRef, get: dbGet } = await import('firebase/database');
       const leaveRef = dbRef(db, `staffLeaves/${dropStaffId}/${dropDate}`);
       const leaveSnap = await dbGet(leaveRef);
-      if (leaveSnap.exists() && (leaveSnap.val() === true || leaveSnap.val()?.unavailable === true)) {
-        toast({ title: "Not Allowed", description: "Staff member is on leave for this date.", variant: "destructive" });
-        return;
+      
+      if (leaveSnap.exists()) {
+        const leaveData = leaveSnap.val();
+        const status = leaveData?.status || 'approved'; // Legacy leaves missing status assume approved
+        
+        if (status === 'approved') {
+          if (leaveData === true || leaveData?.unavailable === true || leaveData?.type === 'full') {
+            toast({ title: "Not Allowed", description: "Staff member is on full-day leave.", variant: "destructive" });
+            return;
+          } else if (leaveData?.type === 'partial' && leaveData.startTime && leaveData.endTime) {
+             const [sH, sM] = leaveData.startTime.split(":").map(Number);
+             const [eH, eM] = leaveData.endTime.split(":").map(Number);
+             const leaveStartMins = sH * 60 + sM;
+             const leaveEndMins = eH * 60 + eM;
+             
+             if (newStartMins < leaveEndMins && newEndMins > leaveStartMins) {
+               toast({ title: "Not Allowed", description: "Timeslot overlaps with staff partial leave.", variant: "destructive" });
+               return;
+             }
+          }
+        }
+      }
+      
+      const lunchStart = 13 * 60;
+      const lunchEnd = 14 * 60;
+      const breakStart = 17 * 60;
+      const breakEnd = 17 * 60 + 30;
+      
+      if ((newStartMins < lunchEnd && newEndMins > lunchStart) || (newStartMins < breakEnd && newEndMins > breakStart)) {
+         toast({ title: "Not Allowed", description: "Timeslot overlaps with mandatory breaks.", variant: "destructive" });
+         return;
       }
     }
 
@@ -581,10 +613,6 @@ export function CalendarView({ appointments }: CalendarViewProps) {
     ].join(':');
 
     // 🔥 In-memory validation matching the exact schema logic requested
-    const durationMins = event.appointmentData.serviceDuration || 30;
-    const newStartMins = start.getHours() * 60 + start.getMinutes();
-    const newEndMins = newStartMins + durationMins;
-
     const isConflict = allEvents.some(b => {
       // Ignore current booking
       if (b.id === event.id) return false;

@@ -45,8 +45,27 @@ export async function GET(req: Request) {
     // Check staff leave
     const leaveRef = ref(db, `staffLeaves/${staffId}/${date}`);
     const leaveSnap = await get(leaveRef);
-    if (leaveSnap.exists() && (leaveSnap.val() === true || leaveSnap.val()?.unavailable === true)) {
-      return NextResponse.json({ slots: [] }); // Return empty slots if on leave
+    let isFullDayLeave = false;
+    let partialLeaveRange: { start: number; end: number } | null = null;
+
+    if (leaveSnap.exists()) {
+      const leaveData = leaveSnap.val();
+      const status = leaveData?.status || 'approved'; // Legacy leaves missing status assume approved
+
+      if (status === 'approved') {
+        if (leaveData === true || leaveData?.unavailable === true || leaveData?.type === 'full') {
+          isFullDayLeave = true;
+        } else if (leaveData?.type === 'partial' && leaveData.startTime && leaveData.endTime) {
+          partialLeaveRange = {
+            start: timeToMinutes(leaveData.startTime),
+            end: timeToMinutes(leaveData.endTime),
+          };
+        }
+      }
+    }
+
+    if (isFullDayLeave) {
+      return NextResponse.json({ slots: [] }); // Return empty slots if full day leave
     }
     
     // In this mock adaptation, if availability is not explicitly defined, we assume 09:00 to 20:00 everyday.
@@ -102,12 +121,23 @@ export async function GET(req: Request) {
     const end   = timeToMinutes(endTime);
     const interval = 30; // 30 min grid
 
+    // Hardcoded breaks per user instruction
+    const lunchStart = timeToMinutes("13:00");
+    const lunchEnd   = timeToMinutes("14:00");
+    const breakStart = timeToMinutes("17:00");
+    const breakEnd   = timeToMinutes("17:30");
+
     for (let t = start; t + serviceDuration <= end; t += interval) {
       const slotEnd = t + serviceDuration;
+      
       const conflict = bookedRanges.find((b) => t < b.end && slotEnd > b.start);
+      const partialConflict = partialLeaveRange && (t < partialLeaveRange.end && slotEnd > partialLeaveRange.start);
+      const lunchConflict = (t < lunchEnd && slotEnd > lunchStart);
+      const breakConflict = (t < breakEnd && slotEnd > breakStart);
+
       slots.push({
         time: minutesToTime(t),
-        available: !conflict,
+        available: !conflict && !partialConflict && !lunchConflict && !breakConflict,
         bookingId: conflict?.bookingId,
       });
     }

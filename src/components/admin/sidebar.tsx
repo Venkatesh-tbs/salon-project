@@ -9,6 +9,7 @@ import {
   Users,
   Scissors,
   BarChart,
+  CalendarMinus,
   LogOut,
 } from 'lucide-react';
 import { logoutFlow } from '@/firebase/auth/client-flow';
@@ -40,6 +41,11 @@ const sidebarItems = [
     title: 'Analytics',
     href: '/admin/analytics',
     icon: BarChart,
+  },
+  {
+    title: 'Leave Requests',
+    href: '/admin/leave-requests',
+    icon: CalendarMinus,
   },
 ];
 

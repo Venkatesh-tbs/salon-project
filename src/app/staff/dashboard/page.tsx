@@ -28,6 +28,11 @@ export default function StaffDashboardPage() {
   const [leaveDate, setLeaveDate] = useState<string>('');
   const [isOnLeave, setIsOnLeave] = useState<boolean>(false);
   const [leaveLoading, setLeaveLoading] = useState<boolean>(false);
+  
+  const [allLeaves, setAllLeaves] = useState<any[]>([]);
+  const [leaveType, setLeaveType] = useState<'full' | 'partial'>('full');
+  const [startTime, setStartTime] = useState('09:00');
+  const [endTime, setEndTime] = useState('12:00');
 
   const router = useRouter();
   const { toast } = useToast();
@@ -87,18 +92,30 @@ export default function StaffDashboardPage() {
     return () => off(staffRef, 'value', staffListener);
   }, [today]);
 
-  // Monitor live Leave Status whenever currentStaffId or leaveDate changes
   useEffect(() => {
-    if (!currentStaffId || !leaveDate) {
+    if (!currentStaffId) {
+      setAllLeaves([]);
       setIsOnLeave(false);
       return;
     }
-    const leaveRef = ref(db, `staffLeaves/${currentStaffId}/${leaveDate}`);
-    const listener = onValue(leaveRef, (snap) => {
-      const val = snap.val();
-      setIsOnLeave(snap.exists() && (val === true || val?.unavailable === true));
+    const leavesRef = ref(db, `staffLeaves/${currentStaffId}`);
+    const listener = onValue(leavesRef, (snap) => {
+      const data = snap.val() || {};
+      const leavesList = Object.entries(data).map(([date, val]: any) => ({
+        date,
+        ...val
+      })).sort((a, b) => a.date.localeCompare(b.date));
+      
+      setAllLeaves(leavesList);
+
+      if (leaveDate && data[leaveDate]) {
+         const d = data[leaveDate];
+         setIsOnLeave(d === true || d.unavailable === true || d.type === 'full' || d.type === 'partial');
+      } else {
+         setIsOnLeave(false);
+      }
     });
-    return () => off(leaveRef, 'value', listener);
+    return () => off(leavesRef, 'value', listener);
   }, [currentStaffId, leaveDate]);
 
   const markComplete = async (id: string) => {
@@ -182,53 +199,100 @@ export default function StaffDashboardPage() {
           ))}
         </div>
 
-        {/* Leave Management Panel */}
-        <div className="mb-10 p-5 rounded-2xl border border-red-500/20 bg-red-500/5 relative overflow-hidden group transition-all hover:border-red-500/30">
-           <div className="absolute inset-0 bg-gradient-to-r from-red-500/5 to-orange-500/5 opacity-50"></div>
-           <div className="relative flex flex-col md:flex-row gap-4 items-end">
-             <div className="flex-1 w-full">
-               <label className="flex items-center gap-2 text-white/60 text-xs font-bold uppercase tracking-widest mb-2">
-                 <CalendarMinus className="w-4 h-4 text-red-400" />
-                 Manage Leave Days {!currentStaffId && "(Re-login to sync)"}
-               </label>
-               <input 
-                 type="date" 
-                 value={leaveDate} 
-                 onChange={e => setLeaveDate(e.target.value)} 
-                 min={today} 
-                 disabled={!currentStaffId}
-                 className="w-full h-12 bg-white/5 border border-white/10 rounded-xl px-4 text-white focus:outline-none focus:border-red-400 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed" 
-               />
-             </div>
-             <button 
-               disabled={!leaveDate || leaveLoading || !currentStaffId}
-               onClick={async () => {
-                 setLeaveLoading(true);
-                 try {
-                   const targetRef = ref(db, `staffLeaves/${currentStaffId}/${leaveDate}`);
-                   if (isOnLeave) {
-                     await remove(targetRef);
-                     toast({ title: "Available 🟢", description: `You have removed your leave for ${leaveDate}.` });
-                   } else {
-                     await set(targetRef, { unavailable: true, createdAt: Date.now() });
-                     toast({ title: "Leave Confirmed 🔴", description: `You are marked as unavailable on ${leaveDate}.`, variant: "destructive" });
-                   }
-                 } finally {
-                   setLeaveLoading(false);
-                 }
-               }}
-               className={`h-12 px-6 rounded-xl font-bold flex items-center justify-center gap-2 transition-all min-w-[180px] shadow-lg ${
-                 !leaveDate || !currentStaffId ? "bg-white/5 text-white/20 border-white/5 cursor-not-allowed" :
-                 isOnLeave 
-                   ? "bg-white/10 text-white hover:bg-white/20 border border-white/20 hover:border-white/30" 
-                   : "bg-red-500/20 text-red-400 hover:bg-red-500/30 border border-red-500/30 hover:shadow-[0_0_20px_rgba(239,68,68,0.2)]"
-               }`}
-             >
-               {leaveLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-               {!currentStaffId ? "Session Expired" : !leaveDate ? "Select a date" : isOnLeave ? "Remove Leave" : "Mark as On Leave"}
-             </button>
-           </div>
-        </div>
+         <div className="mb-10 p-5 rounded-2xl border border-red-500/20 bg-red-500/5 relative overflow-hidden group transition-all hover:border-red-500/30">
+            <div className="absolute inset-0 bg-gradient-to-r from-red-500/5 to-orange-500/5 opacity-50"></div>
+            <div className="relative flex flex-col gap-4 items-start w-full">
+               <div className="flex flex-col md:flex-row gap-4 items-end w-full">
+                 <div className="flex-1 w-full flex flex-col gap-2">
+                   <label className="flex items-center gap-2 text-white/60 text-xs font-bold uppercase tracking-widest">
+                     <CalendarMinus className="w-4 h-4 text-red-400" />
+                     Manage Leave Days {!currentStaffId && "(Re-login to sync)"}
+                   </label>
+                   <div className="flex flex-col md:flex-row gap-3">
+                     <input 
+                       type="date" 
+                       value={leaveDate} 
+                       onChange={e => setLeaveDate(e.target.value)} 
+                       min={today} 
+                       disabled={!currentStaffId}
+                       className="flex-1 h-12 bg-white/5 border border-white/10 rounded-xl px-4 text-white focus:outline-none focus:border-red-400 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed" 
+                     />
+                     <select 
+                       value={leaveType}
+                       onChange={e => setLeaveType(e.target.value as 'full' | 'partial')}
+                       disabled={!currentStaffId || isOnLeave}
+                       className="h-12 bg-white/5 border border-white/10 rounded-xl px-4 text-white focus:outline-none focus:border-red-400 transition-all cursor-pointer disabled:opacity-50"
+                     >
+                        <option value="full" className="bg-[#07050f]">Full Day</option>
+                        <option value="partial" className="bg-[#07050f]">Partial Day</option>
+                     </select>
+                   </div>
+                 </div>
+
+                 <button 
+                   disabled={!leaveDate || leaveLoading || !currentStaffId}
+                   onClick={async () => {
+                     setLeaveLoading(true);
+                     try {
+                       const targetRef = ref(db, `staffLeaves/${currentStaffId}/${leaveDate}`);
+                       if (isOnLeave) {
+                         await remove(targetRef);
+                         toast({ title: "Available 🟢", description: `You have removed your leave for ${leaveDate}.` });
+                       } else {
+                         const payload = leaveType === 'full' 
+                           ? { type: 'full', status: 'pending', createdAt: Date.now() }
+                           : { type: 'partial', startTime, endTime, status: 'pending', createdAt: Date.now() };
+                         await set(targetRef, payload);
+                         toast({ title: "Leave Requested 🔴", description: `Your leave for ${leaveDate} is pending admin approval.`, variant: "default" });
+                       }
+                     } finally {
+                       setLeaveLoading(false);
+                     }
+                   }}
+                   className={`h-12 px-6 rounded-xl font-bold flex items-center justify-center gap-2 transition-all min-w-[180px] shadow-lg ${
+                     !leaveDate || !currentStaffId ? "bg-white/5 text-white/20 border-white/5 cursor-not-allowed" :
+                     isOnLeave 
+                       ? "bg-white/10 text-white hover:bg-white/20 border border-white/20 hover:border-white/30" 
+                       : "bg-red-500/20 text-red-400 hover:bg-red-500/30 border border-red-500/30 hover:shadow-[0_0_20px_rgba(239,68,68,0.2)]"
+                   }`}
+                 >
+                   {leaveLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                   {!currentStaffId ? "Session Expired" : !leaveDate ? "Select a date" : isOnLeave ? "Remove Leave" : "Request Leave"}
+                 </button>
+               </div>
+
+               {leaveType === 'partial' && !isOnLeave && (
+                 <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="flex gap-3 w-full max-w-sm mt-1">
+                    <input type="time" value={startTime} onChange={e => setStartTime(e.target.value)} className="flex-1 h-12 bg-white/5 border border-white/10 rounded-xl px-4 text-white focus:outline-none focus:border-red-400" />
+                    <input type="time" value={endTime} onChange={e => setEndTime(e.target.value)} className="flex-1 h-12 bg-white/5 border border-white/10 rounded-xl px-4 text-white focus:outline-none focus:border-red-400" />
+                 </motion.div>
+               )}
+
+               {allLeaves.length > 0 && (
+                 <div className="w-full mt-4 flex flex-col gap-2">
+                   <p className="text-[10px] uppercase font-bold text-white/40 tracking-widest mb-1">Your Scheduled Leaves</p>
+                   {allLeaves.map(l => {
+                     const isLegacy = l.unavailable === true && !l.type;
+                     const displayType = isLegacy ? 'Full Day' : l.type === 'partial' ? `${l.startTime} to ${l.endTime}` : 'Full Day';
+                     return (
+                       <div key={l.date} className="px-3 py-2.5 rounded-lg border border-white/5 bg-black/20 flex items-center justify-between text-xs backdrop-blur-sm">
+                          <span className="text-white/80 font-medium">
+                            {format(new Date(l.date), 'MMM d, yyyy')} <span className="text-white/40 ml-2">({displayType})</span>
+                          </span>
+                          <span className={`px-2.5 py-1 rounded-md font-bold uppercase text-[9px] tracking-wider ${
+                             (l.status === 'approved' || isLegacy) ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 
+                             l.status === 'rejected' ? 'bg-red-500/20 text-red-400 border border-red-500/30' :
+                             'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'
+                          }`}>
+                            {(l.status || (isLegacy ? 'approved' : 'pending'))}
+                          </span>
+                       </div>
+                     )
+                   })}
+                 </div>
+               )}
+            </div>
+         </div>
 
         {/* Appointments List */}
         <div className="space-y-6">
