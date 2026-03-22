@@ -18,6 +18,9 @@ type RevenueStats = {
   revenueByDay: any[];
   bookingsByService: any[];
   topStaff: any[];
+  subTodayRev: string;
+  subMonthRev: string;
+  subTotalBookings: string;
 };
 
 const STAT_CARDS = (stats: RevenueStats) => [
@@ -26,21 +29,21 @@ const STAT_CARDS = (stats: RevenueStats) => [
     value:   `₹${stats.todayRevenue.toLocaleString("en-IN")}`,
     icon:    "💰",
     color:   "#10b981",
-    sub:     "vs yesterday",
+    sub:     stats.subTodayRev,
   },
   {
     label:   "Month Revenue",
     value:   `₹${stats.monthRevenue.toLocaleString("en-IN")}`,
     icon:    "📈",
     color:   "#c026d3",
-    sub:     "this month",
+    sub:     stats.subMonthRev,
   },
   {
     label:   "Total Bookings",
     value:   stats.totalBookings,
     icon:    "📅",
     color:   "#7c3aed",
-    sub:     `${stats.completedBookings} completed`,
+    sub:     stats.subTotalBookings,
   },
   {
     label:   "Cancelled",
@@ -85,12 +88,32 @@ export const RevenueDashboard: React.FC = () => {
       revenueByDay: [],
       bookingsByService: [],
       topStaff: [],
+      subTodayRev: "0% vs yesterday",
+      subMonthRev: "0% vs last month",
+      subTotalBookings: "0% vs last week",
     };
 
     const hourCount: Record<string, number> = {};
     const serviceMap: Record<string, { count: number; revenue: number }> = {};
     const staffMap: Record<string, { name: string; count: number; revenue: number }> = {};
     const dailyMap: Record<string, { revenue: number; bookings: number }> = {};
+
+    const todayDate = new Date();
+    todayDate.setHours(0,0,0,0);
+    const todayMs = todayDate.getTime();
+
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const ydStr = yesterday.toISOString().split("T")[0];
+
+    const prevMonth = new Date();
+    prevMonth.setMonth(prevMonth.getMonth() - 1);
+    const lastMonthPrefix = prevMonth.toISOString().substring(0, 7);
+
+    let ydRevenue = 0;
+    let lastMonthRevenue = 0;
+    let thisWeekBookings = 0;
+    let lastWeekBookings = 0;
 
     // Get last 30 days for trend chart
     const last30Days = Array.from({ length: 30 }, (_, i) => {
@@ -114,7 +137,18 @@ export const RevenueDashboard: React.FC = () => {
         const price = Number(a.servicePrice) || Number((a as any).totalAmount) || 0;
 
         if (isToday) result.todayRevenue += price;
+        if (a.date === ydStr) ydRevenue += price;
+
         if (isThisMonth) result.monthRevenue += price;
+        if (a.date?.startsWith(lastMonthPrefix)) lastMonthRevenue += price;
+
+        // Weekly comparison bins
+        if (a.date) {
+           const dMs = new Date(a.date).getTime();
+           const diffDays = Math.floor((todayMs - dMs) / (1000 * 60 * 60 * 24));
+           if (diffDays >= 0 && diffDays < 7) thisWeekBookings++;
+           else if (diffDays >= 7 && diffDays < 14) lastWeekBookings++;
+        }
 
         // Daily trend (all time or filtered by last30Days)
         if (dailyMap[a.date]) {
@@ -159,6 +193,16 @@ export const RevenueDashboard: React.FC = () => {
     result.topStaff = Object.entries(staffMap)
       .map(([staffId, v]) => ({ staffId, staffName: v.name, bookings: v.count, revenue: v.revenue }))
       .sort((a, b) => b.revenue - a.revenue);
+
+    const getPctString = (curr: number, prev: number) => {
+      if (prev === 0) return curr > 0 ? "+100%" : "0%";
+      const pct = Math.round(((curr - prev) / prev) * 100);
+      return pct >= 0 ? `+${pct}%` : `${pct}%`;
+    };
+
+    result.subTodayRev = `${getPctString(result.todayRevenue, ydRevenue)} vs yesterday`;
+    result.subMonthRev = `${getPctString(result.monthRevenue, lastMonthRevenue)} vs last month`;
+    result.subTotalBookings = `${getPctString(thisWeekBookings, lastWeekBookings)} vs last week`;
 
     return result;
   }, [appointments]);

@@ -33,6 +33,29 @@ export const CRMTable: React.FC = () => {
     return matchSearch && matchVip;
   });
 
+  const crmInsights = useMemo(() => {
+    if (clients.length === 0) return "0 total clients";
+    
+    const repeatClients = clients.filter(c => c.totalVisits > 1).length;
+    const repeatRate = Math.round((repeatClients / clients.length) * 100);
+    
+    let topSpender = clients[0];
+    let totalVisits = 0;
+    
+    clients.forEach(c => {
+      totalVisits += c.totalVisits;
+      if ((c.totalSpent || 0) > (topSpender.totalSpent || 0)) {
+        topSpender = c;
+      }
+    });
+    
+    const avgVisits = (totalVisits / clients.length).toFixed(1);
+    const topSpenderName = topSpender?.name ? topSpender.name.split(' ')[0] : 'Unknown';
+    const topSpenderStr = (topSpender?.totalSpent || 0) > 0 ? `Top spender: ${topSpenderName}` : "No spend data";
+    
+    return `${clients.length} total clients • ${repeatRate}% repeat rate • ${topSpenderStr} • Avg visits: ${avgVisits}`;
+  }, [clients]);
+
   return (
     <div>
       {/* Header */}
@@ -41,7 +64,7 @@ export const CRMTable: React.FC = () => {
           <h2 className="text-xl font-black text-white" style={{ fontFamily: "'Syne', sans-serif" }}>
             Client CRM
           </h2>
-          <p className="text-white/40 text-sm">{clients.length} total clients</p>
+          <p className="text-white/40 text-sm font-medium tracking-wide">{crmInsights}</p>
         </div>
         <div className="flex items-center gap-3">
           <input

@@ -4,12 +4,86 @@ import { Appointment } from "@/firebase/db";
 export function AiSummaryCard({ appointments }: { appointments: Appointment[] }) {
   const getSummaryText = () => {
     if (appointments.length === 0) {
-      return "No bookings today yet. Get started by adding one manually or awaiting client requests!";
+      return "No bookings available to analyze. The system requires historical data to generate predictive insights.";
     }
-    if (appointments.length === 1) {
-      return `Today, there is a total of 1 appointment booked. The only service scheduled is a ${appointments[0].service}. This indicates a very light day for bookings. You might want to run a quick promotion.`;
+
+    const validBookings = appointments.filter(a => a.status !== 'cancelled' && a.status !== 'pending');
+    
+    if (validBookings.length === 0) {
+      return "There are no completed or confirmed bookings to analyze yet. Check back once clients arrive.";
     }
-    return `Today there are ${appointments.length} appointments booked. Make sure to prepare your tools for the different scheduled services. Looks like a solid day!`;
+
+    const serviceCountsLast7: Record<string, number> = {};
+    const serviceCountsPrev7: Record<string, number> = {};
+    const hourCounts: Record<string, number> = {};
+    const dayCounts: Record<string, number> = {};
+    const overallServiceCounts: Record<string, number> = {};
+    
+    let last7DaysTotal = 0;
+
+    const todayDate = new Date();
+    todayDate.setHours(0,0,0,0);
+    const todayMs = todayDate.getTime();
+
+    validBookings.forEach(a => {
+      // Overall Service Count
+      if (a.service) overallServiceCounts[a.service] = (overallServiceCounts[a.service] || 0) + 1;
+
+      // Busiest Day
+      if (a.date) {
+        const d = new Date(a.date);
+        if (!isNaN(d.getTime())) {
+          const dayStr = d.toLocaleDateString('en-US', { weekday: 'long' });
+          dayCounts[dayStr] = (dayCounts[dayStr] || 0) + 1;
+          
+          // Time delta for 7-day windows
+          const diffDays = Math.floor((todayMs - d.getTime()) / (1000 * 60 * 60 * 24));
+          if (diffDays >= 0 && diffDays < 7) {
+            last7DaysTotal++;
+            if (a.service) serviceCountsLast7[a.service] = (serviceCountsLast7[a.service] || 0) + 1;
+          } else if (diffDays >= 7 && diffDays < 14) {
+            if (a.service) serviceCountsPrev7[a.service] = (serviceCountsPrev7[a.service] || 0) + 1;
+          }
+        }
+      }
+
+      // Peak Hour
+      if (a.time) {
+        const hour = parseInt(a.time.split(':')[0] || '0', 10);
+        const ampm = hour >= 12 ? 'PM' : 'AM';
+        const h12 = hour % 12 || 12;
+        const key = `${h12} ${ampm}`;
+        hourCounts[key] = (hourCounts[key] || 0) + 1;
+      }
+    });
+
+    const getTop = (record: Record<string, number>) => Object.entries(record).sort((a, b) => b[1] - a[1])[0]?.[0] || 'N/A';
+
+    const mostDemandedService = getTop(overallServiceCounts) !== 'N/A' ? getTop(overallServiceCounts) : 'Haircut';
+    const peakHour = getTop(hourCounts) || '12 PM';
+    const busiestDay = getTop(dayCounts) || 'Saturday';
+    
+    // Prediction based on last 7 days average
+    const predictedBookings = Math.round(last7DaysTotal / 7) || 0;
+
+    // Trend Detection using trailing week-over-week velocity
+    let trendString = "";
+    const activeTrendService = getTop(serviceCountsLast7) !== 'N/A' ? getTop(serviceCountsLast7) : mostDemandedService;
+    
+    if (activeTrendService !== 'N/A') {
+      const currentCount = serviceCountsLast7[activeTrendService] || 0;
+      const prevCount = serviceCountsPrev7[activeTrendService] || 0;
+      
+      if (currentCount > prevCount && prevCount >= 0) {
+        trendString = `${activeTrendService} demand is increasing this week.`;
+      } else if (currentCount < prevCount) {
+        trendString = `${activeTrendService} bookings are dipping slightly compared to last week.`;
+      } else {
+        trendString = `${activeTrendService} demand remains perfectly steady.`;
+      }
+    }
+
+    return `${mostDemandedService} is the most demanded service. Peak bookings occur around ${peakHour}, with ${busiestDay} being the busiest day. Based on recent trends, tomorrow is expected to have around ${predictedBookings} bookings. ${trendString}`;
   };
 
   return (
