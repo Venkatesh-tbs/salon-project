@@ -419,12 +419,7 @@ export function CalendarView({ appointments }: CalendarViewProps) {
   const isDraggableAuth = useCallback((event: CalendarEvent) => {
     if (event.status === 'cluster') return false;
     if (event.status === 'completed') return false;
-    
-    // allow rescheduling only for today or future
-    const startOfToday = new Date();
-    startOfToday.setHours(0, 0, 0, 0);
-    if ((event.start as Date) < startOfToday) return false;
-    
+    // Allow dragging any event regardless of date.
     return true;
   }, []);
 
@@ -441,15 +436,11 @@ export function CalendarView({ appointments }: CalendarViewProps) {
 
   const onEventDrop = useCallback(async ({ event, start, end, resourceId }: any) => {
     if (!isDraggableAuth(event)) {
-      toast({ title: "Not Allowed", description: "Completed or past bookings cannot be rescheduled.", variant: "destructive" });
+      toast({ title: "Not Allowed", description: "Completed bookings cannot be rescheduled.", variant: "destructive" });
       return;
     }
 
-    const now = new Date();
-    if (start < now) {
-      toast({ title: "Invalid Reschedule", description: "Cannot move appointments to a past date/time.", variant: "destructive" });
-      return;
-    }
+    // Removed the "start < now" check so admins can freely drag anywhere for manual overrides and testing.
 
     let updatedStaffId = event.appointmentData.staffId || '';
     let updatedStaffName = event.appointmentData.staffName || '';
