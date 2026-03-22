@@ -6,7 +6,15 @@ import { useNotifications, AppNotification } from '@/hooks/useNotifications';
 import { formatDistanceToNow } from 'date-fns';
 
 export function NotificationsBell() {
-  const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
+  const { notifications, unreadCount, markAsRead, markAllAsRead, clearAll } = useNotifications();
+  const [clearing, setClearing] = useState(false);
+
+  const handleClearAll = async () => {
+    setClearing(true);
+    await clearAll();
+    setClearing(false);
+    setIsOpen(false);
+  };
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -93,6 +101,20 @@ export function NotificationsBell() {
               </div>
             )}
           </div>
+
+          {/* Footer: Clear All */}
+          {notifications.length > 0 && (
+            <div className="px-4 py-2.5 border-t border-white/10 bg-zinc-900/50 flex items-center justify-end">
+              <button
+                onClick={handleClearAll}
+                disabled={clearing}
+                className="text-xs text-zinc-500 hover:text-red-400 transition-colors flex items-center gap-1 disabled:opacity-50"
+              >
+                <XCircle className="w-3 h-3" />
+                {clearing ? 'Clearing...' : 'Clear all'}
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

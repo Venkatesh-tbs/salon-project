@@ -167,5 +167,20 @@ export function useNotifications() {
     }
   };
 
-  return { notifications, unreadCount, markAsRead, markAllAsRead };
+  /**
+   * Removes only the notifications currently visible to this user from Firebase.
+   * Admins remove all; staff remove only their own targeted notifications.
+   */
+  const clearAll = async () => {
+    try {
+      const { remove } = await import('firebase/database');
+      await Promise.all(
+        notifications.map((n) => remove(ref(db, `notifications/${n.id}`)))
+      );
+    } catch (err) {
+      console.error('Failed to clear notifications:', err);
+    }
+  };
+
+  return { notifications, unreadCount, markAsRead, markAllAsRead, clearAll };
 }
