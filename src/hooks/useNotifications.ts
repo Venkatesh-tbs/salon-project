@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { ref, onValue, update, get } from 'firebase/database';
+import { ref, onValue, update, get, runTransaction } from 'firebase/database';
 import { db } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 
@@ -163,27 +163,37 @@ export function useNotifications() {
   };
 
   /**
-   * Per-user clear logic:
-   * Safely merges the hiddenFor state so that clearing only affects the current user's UI.
-   * Admin clearing will NOT hide the notification for staff.
+   * Per-user clear logic using Firebase runTransaction for 100% isolation safety.
+   * Ensures we NEVER overwrite other users' hidden states, even under race conditions.
    */
   const clearAll = async () => {
     if (!userCtx.current) return;
     const { userId } = userCtx.current;
     
     try {
-      const updates: Record<string, any> = {};
-      notifications.forEach((n) => {
-        // Explicitly maintain existing hidden states for other users
-        updates[`${n.id}/hiddenFor`] = {
-          ...(n.hiddenFor || {}),
-          [userId]: true
-        };
-      });
-      
-      if (Object.keys(updates).length > 0) {
-        await update(ref(db, 'notifications'), updates);
-      }
+      await Promise.all(
+        notifications.map((n) => {
+          const notificationRef = ref(db, `notifications/${n.id}`);
+          
+          return runTransaction(notificationRef, (currentData) => {
+            if (currentData === null) return currentData; // Node doesn't exist anymore
+            
+            console.log(`[Notifications] Clear ${n.id} | Before:`, currentData.hiddenFor);
+            
+            const updatedHiddenFor = {
+              ...(currentData.hiddenFor || {}),
+              [userId]: true
+            };
+            
+            console.log(`[Notifications] Clear ${n.id} | After:`, updatedHiddenFor);
+            
+            return {
+              ...currentData,
+              hiddenFor: updatedHiddenFor
+            };
+          });
+        })
+      );
     } catch (err) {
       console.error('Failed to clear notifications:', err);
     }
