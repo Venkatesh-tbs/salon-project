@@ -10,6 +10,7 @@ import { Appointment } from '@/firebase/db';
 import { logoutFlow } from '@/firebase/auth/client-flow';
 import { useRouter } from 'next/navigation';
 import { NotificationsBell } from '@/components/admin/notifications-bell';
+import { useToast } from '@/hooks/use-toast';
 
 const STATUS_COLORS: Record<string, string> = {
   pending: 'text-yellow-400 bg-yellow-400/10 border-yellow-400/20',
@@ -23,6 +24,7 @@ export default function StaffDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [completingId, setCompletingId] = useState<string | null>(null);
   const router = useRouter();
+  const { toast } = useToast();
 
   const today = new Date().toISOString().split("T")[0];
   const todayDisplay = format(new Date(), 'EEEE, MMMM d');
@@ -80,6 +82,23 @@ export default function StaffDashboardPage() {
   }, [today]);
 
   const markComplete = async (id: string) => {
+    const appt = appointments.find(a => a.id === id);
+    if (!appt) return;
+
+    if (appt.date && appt.time) {
+      const now = new Date();
+      const [year, month, day] = appt.date.split('-').map(Number);
+      const [hour, minute] = appt.time.split(':').map(Number);
+      const start = new Date(year, month - 1, day, hour, minute);
+      const durationMins = appt.serviceDuration || 30;
+      const endTime = new Date(start.getTime() + durationMins * 60_000);
+
+      if (now < endTime) {
+        toast({ variant: "destructive", title: "Action Prevented", description: "Service not completed yet. Please wait until end time." });
+        return;
+      }
+    }
+
     setCompletingId(id);
     try {
       await update(ref(db, `appointments/${id}`), { status: 'completed' });

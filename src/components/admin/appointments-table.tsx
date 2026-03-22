@@ -70,6 +70,23 @@ export function AppointmentsTable({ appointments, isLoading = false, staffView =
       toast({ variant: "destructive", title: "Error", description: "Appointment ID is missing." });
       return;
     }
+
+    if (status === 'completed') {
+      if (appointment.date && appointment.time) {
+        const now = new Date();
+        const [year, month, day] = appointment.date.split('-').map(Number);
+        const [hour, minute] = appointment.time.split(':').map(Number);
+        const start = new Date(year, month - 1, day, hour, minute);
+        const durationMins = appointment.serviceDuration || 30;
+        const endTime = new Date(start.getTime() + durationMins * 60_000);
+
+        if (now < endTime) {
+          toast({ variant: "destructive", title: "Action Prevented", description: "Service not completed yet. Please wait until end time." });
+          return;
+        }
+      }
+    }
+
     setLoadingId(apptId + status);
     try {
       // Direct Firebase update — no API route involved, guaranteed to have the correct id
