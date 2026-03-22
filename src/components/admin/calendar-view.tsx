@@ -483,16 +483,34 @@ export function CalendarView({ appointments }: CalendarViewProps) {
       String(start.getMinutes()).padStart(2, '0'),
     ].join(':');
 
-    // 🔥 Real-time validation against the DB, ignoring the event being moved
+    // 🔥 In-memory validation to guarantee the current event being dragged is excluded and accurately matched
     const durationMins = event.appointmentData.serviceDuration || 30;
-    const isConflict = await checkBookingOverlap(
-      db,
-      targetStaffId,
-      dateStr,
-      timeStr,
-      durationMins,
-      event.id
-    );
+    const newStartMins = start.getHours() * 60 + start.getMinutes();
+    const newEndMins = newStartMins + durationMins;
+
+    const isConflict = allEvents.some(b => {
+      if (b.id === event.id) return false; // Exact requirement: ignore current booking
+      if (b.status === 'cancelled') return false;
+
+      // Staff match
+      const isStaffMatch = targetStaffId ? b.appointmentData.staffId === targetStaffId : true;
+      if (!isStaffMatch) return false;
+
+      // Date match
+      const bDateStr = [
+        (b.start as Date).getFullYear(),
+        String((b.start as Date).getMonth() + 1).padStart(2, '0'),
+        String((b.start as Date).getDate()).padStart(2, '0'),
+      ].join('-');
+
+      if (bDateStr !== dateStr) return false;
+
+      // Overlap match
+      const bStartMins = (b.start as Date).getHours() * 60 + (b.start as Date).getMinutes();
+      const bEndMins = bStartMins + (b.appointmentData.serviceDuration || 30);
+
+      return newStartMins < bEndMins && newEndMins > bStartMins;
+    });
 
     if (isConflict) {
       toast({ title: "Schedule Conflict", description: `This timeslot overlaps with another booking for this staff member.`, variant: "destructive" });
