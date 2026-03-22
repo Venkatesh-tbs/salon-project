@@ -551,7 +551,7 @@ export function CalendarView({ appointments }: CalendarViewProps) {
   }, [leaveDates]);
 
   const onEventDrop = useCallback(async ({ event, start, end, resourceId }: any) => {
-    // ── Guard: statuses that cannot be rescheduled ───────────────────────────
+    // ── Guard: terminal statuses ──────────────────────────────────────────────
     if (event.status === 'completed') {
       toast({ title: "Not Allowed", description: "Completed bookings cannot be rescheduled.", variant: "destructive" });
       return;
@@ -562,77 +562,101 @@ export function CalendarView({ appointments }: CalendarViewProps) {
     }
 
     // ── Guard: past bookings ─────────────────────────────────────────────────
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const apptDate = new Date(event.appointmentData.date);
-    apptDate.setHours(0, 0, 0, 0);
-    if (apptDate < today) {
+    const todayMidnight = new Date();
+    todayMidnight.setHours(0, 0, 0, 0);
+    const originalApptDate = new Date(event.appointmentData.date + 'T00:00:00');
+    if (originalApptDate < todayMidnight) {
       toast({ title: "Not Allowed", description: "Past bookings cannot be rescheduled.", variant: "destructive" });
       return;
     }
 
-    const dropDate = [
-      start.getFullYear(),
-      String(start.getMonth() + 1).padStart(2, '0'),
-      String(start.getDate()).padStart(2, '0'),
-    ].join('-');
+    // ── STEP 1: Normalize drop date string ───────────────────────────────────
+    const dropY = start.getFullYear();
+    const dropM = String(start.getMonth() + 1).padStart(2, '0');
+    const dropD = String(start.getDate()).padStart(2, '0');
+    const dropDate = `${dropY}-${dropM}-${dropD}`;
 
-    // ── FIX: 00:00 bug — month-view drops send date-only, time = midnight ────
-    // Guard: if start has no meaningful time, inherit the original appointment time
+    // ── STEP 2: Normalize drop time — 00:00 means month-view drop (no time) ─
     const rawHour = start.getHours();
     const rawMin  = start.getMinutes();
     const hasTime = rawHour !== 0 || rawMin !== 0;
-    const timeStr = hasTime
-      ? `${String(rawHour).padStart(2, '0')}:${String(rawMin).padStart(2, '0')}`
-      : event.appointmentData.time; // preserve original time for month-view drops
 
-    const [tH, tM] = timeStr.split(':').map(Number);
-    const durationMins  = event.appointmentData.serviceDuration || 30;
-    const newStartMins  = tH * 60 + tM;
-    const newEndMins    = newStartMins + durationMins;
+    // Reconstruct a full Date on the DROP date, using original time if missing
+    let newStart: Date;
+    if (hasTime) {
+      newStart = new Date(dropY, start.getMonth(), start.getDate(), rawHour, rawMin, 0, 0);
+    } else {
+      // Fall back to original appointment time placed on drop date
+      const [origH, origM] = (event.appointmentData.time || '09:00').split(':').map(Number);
+      newStart = new Date(dropY, start.getMonth(), start.getDate(), origH, origM, 0, 0);
+    }
+
+    const durationMs = (event.appointmentData.serviceDuration || 30) * 60_000;
+    const newEnd = new Date(newStart.getTime() + durationMs);
+
+    // Derive timeStr from the normalized newStart
+    const timeStr = `${String(newStart.getHours()).padStart(2, '0')}:${String(newStart.getMinutes()).padStart(2, '0')}`;
 
     const dropStaffId = resourceId === 'unassigned' ? '' : (resourceId || '');
 
-    // ── Guard: staff leave validation ────────────────────────────────────────
+    // ── STEP 3: Fetch leave data & validate (STRICT, synchronous fetch) ──────
     if (dropStaffId) {
       const { ref: dbRef, get: dbGet } = await import('firebase/database');
-      const leaveRef = dbRef(db, `staffLeaves/${dropStaffId}/${dropDate}`);
-      const leaveSnap = await dbGet(leaveRef);
+      const leaveSnap = await dbGet(dbRef(db, `staffLeaves/${dropStaffId}/${dropDate}`));
 
       if (leaveSnap.exists()) {
         const leaveData = leaveSnap.val();
         const status = leaveData?.status || 'approved';
 
         if (status === 'approved') {
+          // ── Full-day leave → hard block ────────────────────────────────────
           if (leaveData === true || leaveData?.unavailable === true || leaveData?.type === 'full') {
             toast({ title: "Staff Unavailable (Leave)", description: "Staff is on full-day leave on this date.", variant: "destructive" });
             return;
-          } else if (leaveData?.type === 'partial' && leaveData.startTime && leaveData.endTime) {
+          }
+
+          // ── Partial leave → Date-object overlap check ──────────────────────
+          if (leaveData?.type === 'partial' && leaveData.startTime && leaveData.endTime) {
             const [sH, sM] = leaveData.startTime.split(':').map(Number);
             const [eH, eM] = leaveData.endTime.split(':').map(Number);
-            const leaveStartMins = sH * 60 + sM;
-            const leaveEndMins   = eH * 60 + eM;
-            if (newStartMins < leaveEndMins && newEndMins > leaveStartMins) {
-              toast({ title: "Staff Unavailable (Leave)", description: "Timeslot overlaps with staff partial leave.", variant: "destructive" });
-              return;
+
+            // Build leave window as Date objects on the same drop date
+            const leaveStart = new Date(dropY, start.getMonth(), start.getDate(), sH, sM, 0, 0);
+            const leaveEnd   = new Date(dropY, start.getMonth(), start.getDate(), eH, eM, 0, 0);
+
+            console.log('[LeaveBlock] Checking partial leave overlap:', {
+              newStart:   newStart.toTimeString().slice(0, 5),
+              newEnd:     newEnd.toTimeString().slice(0, 5),
+              leaveStart: leaveStart.toTimeString().slice(0, 5),
+              leaveEnd:   leaveEnd.toTimeString().slice(0, 5),
+              overlap:    newStart < leaveEnd && newEnd > leaveStart,
+            });
+
+            // STRICT overlap: newStart < leaveEnd AND newEnd > leaveStart
+            if (newStart < leaveEnd && newEnd > leaveStart) {
+              toast({ title: "Staff Unavailable (Leave)", description: `Staff is on partial leave ${leaveData.startTime}–${leaveData.endTime}. Drop blocked.`, variant: "destructive" });
+              return; // ← HARD BLOCK: no Firebase write, no state update
             }
           }
         }
       }
 
-      // ── Guard: mandatory break times ─────────────────────────────────────
-      const lunchStart = 13 * 60, lunchEnd = 14 * 60;
-      const breakStart = 17 * 60, breakEnd = 17 * 60 + 30;
+      // ── Guard: mandatory breaks (same Date-object approach) ───────────────
+      const lunchStart = new Date(dropY, start.getMonth(), start.getDate(), 13, 0, 0, 0);
+      const lunchEnd   = new Date(dropY, start.getMonth(), start.getDate(), 14, 0, 0, 0);
+      const brkStart   = new Date(dropY, start.getMonth(), start.getDate(), 17, 0, 0, 0);
+      const brkEnd     = new Date(dropY, start.getMonth(), start.getDate(), 17, 30, 0, 0);
+
       if (
-        (newStartMins < lunchEnd && newEndMins > lunchStart) ||
-        (newStartMins < breakEnd && newEndMins > breakStart)
+        (newStart < lunchEnd && newEnd > lunchStart) ||
+        (newStart < brkEnd   && newEnd > brkStart)
       ) {
         toast({ title: "Not Allowed", description: "Timeslot overlaps with mandatory break.", variant: "destructive" });
         return;
       }
     }
 
-    // ── Resolve updated staff fields ─────────────────────────────────────────
+    // ── STEP 4: Resolve updated staff fields ─────────────────────────────────
     let updatedStaffId    = event.appointmentData.staffId || '';
     let updatedStaffName  = event.appointmentData.staffName || '';
     let updatedStaffEmail = event.appointmentData.staffEmail || '';
@@ -641,18 +665,21 @@ export function CalendarView({ appointments }: CalendarViewProps) {
       if (resourceId === 'unassigned') {
         updatedStaffId = ''; updatedStaffName = ''; updatedStaffEmail = '';
       } else {
-        const staffRef = resources.find((r) => r.resourceId === resourceId);
-        if (staffRef) {
-          updatedStaffId    = staffRef.resourceId;
-          updatedStaffName  = staffRef.resourceTitle;
-          updatedStaffEmail = staffRef.email;
+        const staffMatch = resources.find((r) => r.resourceId === resourceId);
+        if (staffMatch) {
+          updatedStaffId    = staffMatch.resourceId;
+          updatedStaffName  = staffMatch.resourceTitle;
+          updatedStaffEmail = staffMatch.email;
         }
       }
     }
 
     const targetStaffId = (resourceId && resourceId !== 'unassigned') ? resourceId : updatedStaffId;
 
-    // ── Guard: in-memory booking overlap ─────────────────────────────────────
+    // ── STEP 5: In-memory booking conflict check (Date-object approach) ───────
+    const newStartMs = newStart.getTime();
+    const newEndMs   = newEnd.getTime();
+
     const isConflict = allEvents.some(b => {
       if (b.id === event.id) return false;
       if (b.status === 'cancelled') return false;
@@ -660,9 +687,9 @@ export function CalendarView({ appointments }: CalendarViewProps) {
       if ((appt.staffId || '') !== (targetStaffId || '')) return false;
       if (appt.date !== dropDate) return false;
       const [bH, bM] = appt.time.split(':').map(Number);
-      const bStart = bH * 60 + bM;
-      const bEnd   = bStart + (appt.serviceDuration || 30);
-      return newStartMins < bEnd && newEndMins > bStart;
+      const bStartMs = new Date(dropY, start.getMonth(), start.getDate(), bH, bM).getTime();
+      const bEndMs   = bStartMs + (appt.serviceDuration || 30) * 60_000;
+      return newStartMs < bEndMs && newEndMs > bStartMs;
     });
 
     if (isConflict) {
@@ -670,31 +697,30 @@ export function CalendarView({ appointments }: CalendarViewProps) {
       return;
     }
 
-    // ── All validations passed — commit to Firebase ───────────────────────────
+    // ── STEP 6: All validations passed — commit to Firebase ──────────────────
     try {
       const { ref: _ref, push: _push } = await import('firebase/database');
 
       await update(ref(db, `appointments/${event.id}`), {
-        date: dropDate,
-        time: timeStr,
+        date:       dropDate,
+        time:       timeStr,
         staffId:    updatedStaffId,
         staffName:  updatedStaffName,
         staffEmail: updatedStaffEmail,
       });
 
-      // Reschedule notification → admin sees all, staff sees by staffId
       await _push(_ref(db, 'notifications'), {
-        type: 'RESCHEDULE',
-        message: `Booking rescheduled for ${event.appointmentData.name} → ${dropDate} at ${timeStr}`,
-        staffId: updatedStaffId || null,
+        type:      'RESCHEDULE',
+        message:   `Booking rescheduled for ${event.appointmentData.name} → ${dropDate} at ${timeStr}`,
+        staffId:   updatedStaffId || null,
         createdAt: Date.now(),
-        read: false,
+        read:      false,
       });
 
       toast({ title: "Booking Rescheduled ✅", description: `Moved to ${dropDate} at ${timeStr}` });
     } catch (err) {
       toast({ title: "Failed", description: "Could not persist reschedule.", variant: "destructive" });
-      console.error(err);
+      console.error('[Reschedule] Firebase write error:', err);
     }
   }, [allEvents, resources, toast]);
 
