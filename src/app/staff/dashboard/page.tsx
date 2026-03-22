@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import { format } from 'date-fns';
 import { Clock, Phone, User, CheckCheck, Loader2, LogOut, Calendar, CalendarMinus } from 'lucide-react';
 import { db } from '@/firebase';
-import { ref, onValue, off, update, set, remove } from 'firebase/database';
+import { ref, onValue, off, update, set, remove, push } from 'firebase/database';
 import { Appointment } from '@/firebase/db';
 import { logoutFlow } from '@/firebase/auth/client-flow';
 import { useRouter } from 'next/navigation';
@@ -261,6 +261,23 @@ export default function StaffDashboardPage() {
                            ? { type: 'full', status: 'pending', createdAt: Date.now() }
                            : { type: 'partial', startTime, endTime, status: 'pending', createdAt: Date.now() };
                          await set(targetRef, payload);
+
+                         // Notify admin of new leave request
+                         const staffName = currentStaffId ? (
+                           await (async () => { 
+                             const { ref: r2, get } = await import('firebase/database');
+                             const snap = await get(r2(db, `staff/${currentStaffId}`));
+                             return snap.exists() ? (snap.val().name || 'Staff') : 'Staff';
+                           })()
+                         ) : 'Staff';
+                         await push(ref(db, 'notifications'), {
+                           type: 'LEAVE_REQUEST',
+                           message: `${staffName} requested ${leaveType === 'partial' ? 'partial' : 'full-day'} leave on ${leaveDate}`,
+                           staffId: currentStaffId,
+                           createdAt: Date.now(),
+                           read: false,
+                         });
+
                          toast({ title: "Leave request submitted ✅", description: `Your leave for ${leaveDate} is pending approval.` });
                          
                          // Clear form on success

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
 import { db } from '@/firebase';
-import { ref, onValue, off, update, remove } from 'firebase/database';
+import { ref, onValue, off, update, remove, push } from 'firebase/database';
 import { useToast } from '@/hooks/use-toast';
 import { CalendarMinus, CheckCircle2, XCircle, Clock, Trash2 } from 'lucide-react';
 
@@ -95,9 +95,25 @@ export default function LeaveRequestsPage() {
       
       if (newStatus === 'rejected') {
          await remove(targetRef);
+         // Notify staff their leave was rejected
+         await push(ref(db, 'notifications'), {
+           type: 'LEAVE_STATUS',
+           message: `Your leave request for ${req.date} has been Rejected.`,
+           staffId: req.staffId,
+           createdAt: Date.now(),
+           read: false,
+         });
          toast({ title: "Leave Rejected", description: `Removed leave for ${req.staffName} on ${req.date}`, variant: 'destructive' });
       } else {
          await update(targetRef, { status: 'approved' });
+         // Notify staff their leave was approved
+         await push(ref(db, 'notifications'), {
+           type: 'LEAVE_STATUS',
+           message: `Your leave request for ${req.date} has been Approved ✅`,
+           staffId: req.staffId,
+           createdAt: Date.now(),
+           read: false,
+         });
          toast({ title: "Leave Approved", description: `Approved leave for ${req.staffName} on ${req.date}` });
       }
     } catch (e: any) {
