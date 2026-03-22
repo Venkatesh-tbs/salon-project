@@ -33,7 +33,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { ref, push } from 'firebase/database';
 import { db } from '@/firebase';
-import { Appointment, Service, subscribeToServices, initDefaultServices } from '@/firebase/db';
+import { Appointment, Service, subscribeToServices, initDefaultServices, checkBookingOverlap } from '@/firebase/db';
 import { RazorpayModal } from '@/components/dashboard/RazorpayModal';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -397,6 +397,28 @@ export function AppointmentForm({ initialData, onSuccess }: AppointmentFormProps
   ) => {
     const svcObj = services.find(s => s.name === values.service);
     const staffObj = staffList.find(s => s.staffId === values.staff);
+    
+    const duration = svcObj?.duration || 45;
+    const staffId = values.staff || '';
+
+    // 🔥 Real-time DB check for double bookings
+    if (staffId && values.date && values.time) {
+      const isConflict = await checkBookingOverlap(
+        db,
+        staffId,
+        values.date,
+        values.time,
+        duration
+      );
+      if (isConflict) {
+        toast({
+          variant: 'destructive',
+          title: 'Time Slot Taken',
+          description: 'This time slot is no longer available. Please select another time.',
+        });
+        return; // Abort saving completely
+      }
+    }
 
     const appointment: Record<string, any> = {
       name: values.name,

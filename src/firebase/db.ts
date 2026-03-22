@@ -58,6 +58,49 @@ export interface Service {
 // ─── APPOINTMENTS ───────────────────────────────────────────────
 
 /**
+ * Checks if a new booking overlaps with any existing booking in the database.
+ * Matches same staffId and date.
+ * Applies overlap condition: newStart < existingEnd && newEnd > existingStart
+ */
+export async function checkBookingOverlap(
+  rtdb: Database,
+  staffId: string,
+  date: string,
+  newStartTime: string, // "HH:MM"
+  serviceDuration: number, // minutes
+  excludeAppointmentId?: string
+): Promise<boolean> {
+  const appointmentsRef = ref(rtdb, 'appointments');
+  const snapshot = await get(appointmentsRef);
+  if (!snapshot.exists()) return false;
+  
+  const [nHour, nMin] = newStartTime.split(':').map(Number);
+  const newStart = nHour * 60 + nMin;
+  const newEnd = newStart + Math.max(serviceDuration, 15); // minimum duration to avoid 0-minute edge cases
+
+  let hasConflict = false;
+  
+  snapshot.forEach((child) => {
+    const appt = { id: child.key!, ...child.val() } as Appointment;
+    if (appt.status === 'cancelled') return;
+    if (excludeAppointmentId && appt.id === excludeAppointmentId) return;
+    if (appt.staffId !== staffId || appt.date !== date) return;
+    
+    // Calculate existing start/end
+    const [eHour, eMin] = appt.time.split(':').map(Number);
+    const existingStart = eHour * 60 + eMin;
+    const existingEnd = existingStart + Math.max(appt.serviceDuration || 30, 15);
+    
+    // Exact requested overlap math
+    if (newStart < existingEnd && newEnd > existingStart) {
+      hasConflict = true;
+    }
+  });
+  
+  return hasConflict;
+}
+
+/**
  * Save a new appointment to Firebase Realtime Database under 'appointments/'.
  * Returns the auto-generated appointment ID.
  */

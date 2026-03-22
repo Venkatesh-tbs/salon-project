@@ -6,7 +6,7 @@ import moment from 'moment';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import withDragAndDrop from 'react-big-calendar/lib/addons/dragAndDrop';
 import 'react-big-calendar/lib/addons/dragAndDrop/styles.css';
-import { Appointment } from '@/firebase/db';
+import { Appointment, checkBookingOverlap } from '@/firebase/db';
 import { db } from '@/firebase';
 import { ref, update, onValue, off } from 'firebase/database';
 import { useToast } from '@/hooks/use-toast';
@@ -473,22 +473,6 @@ export function CalendarView({ appointments }: CalendarViewProps) {
 
     const targetStaffId = resourceId && resourceId !== 'unassigned' ? resourceId : updatedStaffId;
 
-    // Check for overlap conflicts
-    const isConflict = allEvents.some((e) => {
-      if (e.id === event.id) return false;
-      if (['cancelled'].includes(e.status)) return false;
-      if (targetStaffId && e.appointmentData.staffId !== targetStaffId) return false;
-
-      const eStart = e.start as Date;
-      const eEnd = e.end as Date;
-      return Math.max(start.getTime(), eStart.getTime()) < Math.min(end.getTime(), eEnd.getTime());
-    });
-
-    if (isConflict) {
-      toast({ title: "Schedule Conflict", description: `This timeslot overlaps with another booking for this staff member.`, variant: "destructive" });
-      return;
-    }
-
     const dateStr = [
       start.getFullYear(),
       String(start.getMonth() + 1).padStart(2, '0'),
@@ -498,6 +482,22 @@ export function CalendarView({ appointments }: CalendarViewProps) {
       String(start.getHours()).padStart(2, '0'),
       String(start.getMinutes()).padStart(2, '0'),
     ].join(':');
+
+    // 🔥 Real-time validation against the DB, ignoring the event being moved
+    const durationMins = event.appointmentData.serviceDuration || 30;
+    const isConflict = await checkBookingOverlap(
+      db,
+      targetStaffId,
+      dateStr,
+      timeStr,
+      durationMins,
+      event.id
+    );
+
+    if (isConflict) {
+      toast({ title: "Schedule Conflict", description: `This timeslot overlaps with another booking for this staff member.`, variant: "destructive" });
+      return;
+    }
 
     try {
       await update(ref(db, `appointments/${event.id}`), {
