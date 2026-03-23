@@ -44,6 +44,7 @@ const STATUS_CONFIG: Record<AppointmentStatus, { label: string; dotClass: string
 export function AppointmentsTable({ appointments, isLoading = false, staffView = false }: AppointmentsTableProps) {
   const { toast } = useToast();
   const [loadingId, setLoadingId] = useState<string | null>(null);
+  const [visibleCount, setVisibleCount] = useState(5);
   const [staffList, setStaffList] = useState<{ staffId: string; name: string; email?: string }[]>([]);
 
   useEffect(() => {
@@ -212,6 +213,9 @@ export function AppointmentsTable({ appointments, isLoading = false, staffView =
     );
   }
 
+  const visibleAppointments = appointments.slice(0, visibleCount);
+  const hasMore = visibleCount < appointments.length;
+
   return (
     <div className="glass-panel rounded-2xl overflow-hidden border border-white/10 shadow-2xl relative">
       <div className="absolute top-0 right-1/4 w-64 h-64 bg-brand-purple/10 rounded-full blur-[100px] pointer-events-none" />
@@ -238,7 +242,7 @@ export function AppointmentsTable({ appointments, isLoading = false, staffView =
             </tr>
           </thead>
           <tbody className="divide-y divide-white/5">
-            {appointments.map((appt) => {
+            {visibleAppointments.map((appt) => {
               const cfg = STATUS_CONFIG[appt.status] ?? STATUS_CONFIG.pending;
               const isActing = loadingId?.startsWith(appt.id ?? '');
               return (
@@ -350,6 +354,19 @@ export function AppointmentsTable({ appointments, isLoading = false, staffView =
           </tbody>
         </table>
       </div>
+
+      {/* Show More / Show Less */}
+      {appointments.length > 5 && (
+        <div className="flex justify-center pt-1 pb-4">
+          <button
+            onClick={() => hasMore ? setVisibleCount(v => v + 5) : setVisibleCount(5)}
+            className="flex items-center gap-2 px-5 py-2 rounded-xl text-xs font-bold text-white/50 hover:text-brand-purple border border-white/10 hover:border-brand-purple/30 bg-white/[0.02] hover:bg-brand-purple/5 transition-all duration-200"
+          >
+            <ChevronRight className={`w-3.5 h-3.5 transition-transform duration-200 ${hasMore ? '' : 'rotate-90'}`} />
+            {hasMore ? `Show More (${appointments.length - visibleCount} remaining)` : 'Show Less'}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
