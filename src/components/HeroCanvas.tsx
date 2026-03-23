@@ -1,16 +1,7 @@
 "use client";
 import React, { useEffect, useRef } from "react";
-import { motion, useMotionValue, useTransform, useSpring, Variants } from "framer-motion";
+import { motion, useMotionValue, useTransform, useSpring, Variants, useScroll } from "framer-motion";
 
-
-const stagger: Variants = {
-  hidden: {},
-  visible: { transition: { staggerChildren: 0.12, delayChildren: 0.2 } },
-};
-const fadeUp: Variants = {
-  hidden: { opacity: 0, y: 40 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease: [0.22, 1, 0.36, 1] } },
-};
 
 interface HeroCanvasProps {
   onBookNow?: () => void;
@@ -30,6 +21,11 @@ export default function HeroCanvas({ onBookNow }: HeroCanvasProps) {
   const glowY = useTransform(springY, [-0.5, 0.5], ["-15%", "15%"]);
   const parallaxX = useTransform(springX, [-0.5, 0.5], [-20, 20]);
   const parallaxY = useTransform(springY, [-0.5, 0.5], [-10, 10]);
+
+  // Scroll effect (Apple Style)
+  const { scrollY } = useScroll();
+  const videoScale = useTransform(scrollY, [0, 500], [1, 1.1]);
+  const videoOpacity = useTransform(scrollY, [0, 500], [0.6, 0.3]);
 
   // Generate particles client-side only to prevent SSR/client mismatch
   const [mounted, setMounted] = React.useState(false);
@@ -64,6 +60,30 @@ export default function HeroCanvas({ onBookNow }: HeroCanvasProps) {
       ref={containerRef}
       className="relative min-h-[80vh] flex flex-col items-center justify-center overflow-hidden bg-transparent"
     >
+      {/* ── Video Background & Apple Scroll Parallax ── */}
+      <motion.div 
+        className="absolute inset-0 w-full h-full overflow-hidden"
+        style={{ scale: videoScale, opacity: videoOpacity }}
+      >
+        <video
+          autoPlay
+          muted
+          loop
+          playsInline
+          preload="none"
+          poster="/hero-fallback.jpg"
+          className="hidden md:block absolute inset-0 w-full h-full object-cover"
+        >
+          <source src="/videos/salon-hero.mp4" type="video/mp4" />
+        </video>
+        <img 
+          src="/hero-fallback.jpg" 
+          alt="Salon Hero"
+          className="md:hidden absolute inset-0 w-full h-full object-cover" 
+        />
+      </motion.div>
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px]" />
+
       {/* ambient orbs */}
       <motion.div
         className="absolute w-[700px] h-[700px] rounded-full blur-[140px] opacity-25 pointer-events-none"
@@ -100,20 +120,22 @@ export default function HeroCanvas({ onBookNow }: HeroCanvasProps) {
       {/* hero content */}
       <motion.div
         className="relative z-10 text-center px-6 max-w-5xl mx-auto"
-        variants={stagger}
-        initial="hidden"
-        animate="visible"
+        initial={{ opacity: 0, scale: 1.2 }}
+        animate={{ opacity: 1, scale: 1, y: [0, -10, 0] }}
+        transition={{ 
+          duration: 1.2, ease: "easeOut",
+          y: { repeat: Infinity, duration: 4, ease: "easeInOut", delay: 1.2 } 
+        }}
         style={{ x: parallaxX, y: parallaxY }}
       >
-        <motion.div variants={fadeUp} className="mb-4">
+        <div className="mb-4">
           <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-fuchsia-500/30 bg-fuchsia-500/10 text-fuchsia-300 text-sm font-medium tracking-widest uppercase">
             <span className="w-1.5 h-1.5 rounded-full bg-fuchsia-400 animate-pulse" />
             Premium Salon Experience
           </span>
-        </motion.div>
+        </div>
 
-        <motion.h1
-          variants={fadeUp}
+        <h1
           className="text-5xl sm:text-7xl md:text-8xl font-black tracking-tight leading-none mb-6"
           style={{ fontFamily: "'Syne', sans-serif" }}
         >
@@ -125,24 +147,22 @@ export default function HeroCanvas({ onBookNow }: HeroCanvasProps) {
             BEYOND
           </span>
           <span className="block text-white">LIMITS</span>
-        </motion.h1>
+        </h1>
 
-        <motion.p
-          variants={fadeUp}
+        <p
           className="text-base sm:text-lg md:text-xl text-white/50 max-w-xl mx-auto mb-10 leading-relaxed px-4"
           style={{ fontFamily: "'DM Sans', sans-serif" }}
         >
           Where artistry meets precision. Elevate your presence with bespoke
           beauty crafted for those who demand the extraordinary.
-        </motion.p>
+        </p>
 
-        <motion.div variants={fadeUp} className="flex flex-col sm:flex-row gap-4 justify-center px-4 w-full sm:w-auto">
+        <div className="flex flex-col sm:flex-row gap-4 justify-center px-4 w-full sm:w-auto">
           <button
             onClick={onBookNow}
-            className="relative group px-8 py-4 rounded-2xl font-semibold text-white overflow-hidden transition-all duration-300 hover:scale-[1.03] active:scale-95 w-full sm:w-auto"
+            className="relative group px-8 py-4 rounded-2xl font-semibold text-white overflow-hidden transition-all duration-300 hover:shadow-2xl hover:shadow-purple-500/40 hover:scale-105 active:scale-95 w-full sm:w-auto"
             style={{
               background: "linear-gradient(135deg, #c026d3, #7c3aed)",
-              boxShadow: "0 0 30px #c026d355",
             }}
           >
             <span className="relative z-10 tracking-wide">Book Now</span>
@@ -156,7 +176,7 @@ export default function HeroCanvas({ onBookNow }: HeroCanvasProps) {
           >
             Explore Services
           </button>
-        </motion.div>
+        </div>
       </motion.div>
     </section>
   );
