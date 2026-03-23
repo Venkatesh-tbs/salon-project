@@ -187,6 +187,64 @@ const RippleButton = React.forwardRef<HTMLButtonElement, {
           background-color: #1a1625 !important;
           color: white !important;
         }
+
+        /* ── Premium Dropdown UI ───────────────────────────── */
+        .dropdown-menu {
+          background: rgba(20, 10, 40, 0.95);
+          backdrop-filter: blur(20px);
+          border: 1px solid rgba(255,255,255,0.1);
+          border-radius: 12px;
+          box-shadow: 0 0 30px rgba(168,85,247,0.2);
+          overflow-y: auto;
+          max-height: 220px;
+          animation: dropFadeIn 0.2s ease;
+          position: absolute;
+          width: 100%;
+          top: 100%;
+          left: 0;
+          z-index: 50;
+          margin-top: 8px;
+          padding: 8px;
+        }
+
+        .dropdown-menu::-webkit-scrollbar {
+          width: 4px;
+        }
+        .dropdown-menu::-webkit-scrollbar-thumb {
+          background: #a855f7;
+          border-radius: 10px;
+        }
+
+        @keyframes dropFadeIn {
+          from { opacity: 0; transform: translateY(-5px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+
+        .dropdown-item {
+          padding: 10px 14px;
+          border-radius: 8px;
+          transition: all 0.2s ease;
+          cursor: pointer;
+          margin-bottom: 2px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          color: rgba(255,255,255,0.8);
+        }
+        .dropdown-item:hover:not(.disabled) {
+          background: rgba(168,85,247,0.2);
+          transform: translateX(4px);
+          color: white;
+        }
+        .dropdown-item.selected {
+          background: linear-gradient(90deg, #a855f7, #6366f1);
+          color: white;
+          font-weight: 600;
+        }
+        .dropdown-item.disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
       `}</style>
     </button>
   );
@@ -264,6 +322,20 @@ export function AppointmentForm({ initialData, onSuccess }: AppointmentFormProps
   const [paymentModal, setPaymentModal] = React.useState(false);
   const [pendingValues, setPendingValues] = React.useState<z.infer<typeof formSchema> | null>(null);
   const [pendingBookingId] = React.useState(() => uuidv4());
+
+  // Dropdown state
+  const [openDropdown, setOpenDropdown] = React.useState<'service' | 'staff' | 'time' | null>(null);
+
+  // Close dropdowns on outside click
+  React.useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (!(e.target as Element).closest('.premium-dropdown')) {
+        setOpenDropdown(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const todayStr = new Date().toISOString().split("T")[0];
 
@@ -659,7 +731,7 @@ export function AppointmentForm({ initialData, onSuccess }: AppointmentFormProps
                   name="service"
                   render={({ field }) => (
                     <FormItem>
-                      <div className="relative group w-full">
+                      <div className="relative group w-full premium-dropdown">
                         <label
                           className="absolute z-10 pointer-events-none transition-all duration-200 font-medium"
                           style={{
@@ -678,18 +750,40 @@ export function AppointmentForm({ initialData, onSuccess }: AppointmentFormProps
                         <div className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none text-white/40 group-focus-within:text-fuchsia-400 z-10">
                           <Sparkle className="h-5 w-5" />
                         </div>
-                        <select
-                          value={field.value}
-                          onChange={field.onChange}
-                          className="w-full h-14 rounded-xl bg-white/[0.07] border border-white/10 pl-12 pr-10 text-sm text-white outline-none transition-all focus:border-fuchsia-500 appearance-none cursor-pointer"
+                        
+                        {/* Custom Dropdown Trigger */}
+                        <button
+                          type="button"
+                          onClick={() => setOpenDropdown(openDropdown === 'service' ? null : 'service')}
+                          className="w-full h-14 rounded-xl bg-white/[0.07] border border-white/10 pl-12 pr-10 text-left text-sm text-white outline-none transition-all focus:border-fuchsia-500 cursor-pointer flex items-center"
                         >
-                          <option value="" disabled className="bg-[#07050f]">{servicesLoading ? "Loading services..." : ""}</option>
-                          {services.map((svc) => (
-                            <option key={svc.id} value={svc.name} className="bg-[#07050f] py-2">
-                              {svc.name} - ₹{svc.price} ({svc.duration} min)
-                            </option>
-                          ))}
-                        </select>
+                          {field.value ? field.value : servicesLoading ? (
+                            <span className="text-white/40 flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin"/> Loading services...</span>
+                          ) : <span className="text-white/40"></span>}
+                        </button>
+                        
+                        {/* Custom Dropdown Menu */}
+                        {openDropdown === 'service' && (
+                          <div className="dropdown-menu">
+                            {Array.from(new Map(services.map(s => [s.name, s])).values()).map((svc) => (
+                              <div
+                                key={svc.id}
+                                className={`dropdown-item ${field.value === svc.name ? 'selected' : ''}`}
+                                onClick={() => {
+                                  field.onChange(svc.name);
+                                  setOpenDropdown(null);
+                                }}
+                              >
+                                <div className="flex flex-col">
+                                  <span className="text-sm">{svc.name}</span>
+                                  <span className="text-[10px] opacity-70">{svc.duration} mins</span>
+                                </div>
+                                <span className="text-sm font-semibold">₹{svc.price}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
                         <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-white/40">
                           ▼
                         </div>
@@ -705,7 +799,7 @@ export function AppointmentForm({ initialData, onSuccess }: AppointmentFormProps
                   name="staff"
                   render={({ field }) => (
                     <FormItem>
-                      <div className="relative group w-full">
+                      <div className="relative group w-full premium-dropdown">
                         <label
                           className="absolute z-10 pointer-events-none transition-all duration-200 font-medium"
                           style={{
@@ -724,21 +818,50 @@ export function AppointmentForm({ initialData, onSuccess }: AppointmentFormProps
                         <div className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none text-white/40 group-focus-within:text-fuchsia-400 z-10">
                           <User className="h-5 w-5" />
                         </div>
-                        <select
-                          value={field.value || ''}
-                          onChange={field.onChange}
+                        
+                        <button
+                          type="button"
                           disabled={!watchService || staffLoading}
-                          className={`w-full h-14 rounded-xl bg-white/[0.07] border border-white/10 pl-12 pr-10 text-sm outline-none transition-all focus:border-fuchsia-500 appearance-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${!field.value ? 'text-white/40' : 'text-white'}`}
+                          onClick={() => setOpenDropdown(openDropdown === 'staff' ? null : 'staff')}
+                          className={`w-full h-14 rounded-xl bg-white/[0.07] border border-white/10 pl-12 pr-10 text-left text-sm outline-none transition-all focus:border-fuchsia-500 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center ${!field.value ? 'text-white/40' : 'text-white'}`}
                         >
-                          <option value="" disabled className="bg-[#1a1625] text-white">
-                            {!watchService ? "Select a service first" : staffLoading ? "Loading stylists..." : "Choose your stylist"}
-                          </option>
-                          {staffList.map((st: any) => (
-                            <option key={st.staffId} value={st.staffId} className="bg-[#1a1625] text-white py-2" disabled={st.isOnLeave}>
-                              {st.name} - {st.role} {st.isOnLeave ? "(On Leave)" : ""}
-                            </option>
-                          ))}
-                        </select>
+                          {field.value 
+                            ? staffList.find(s => s.staffId === field.value)?.name || field.value
+                            : !watchService 
+                              ? "Select a service first" 
+                              : staffLoading 
+                                ? <span className="flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin"/> Loading stylists...</span> 
+                                : "Choose your stylist"
+                          }
+                        </button>
+
+                        {openDropdown === 'staff' && staffList.length > 0 && (
+                          <div className="dropdown-menu">
+                            {staffList.map((st: any) => (
+                              <div
+                                key={st.staffId}
+                                className={`dropdown-item ${field.value === st.staffId ? 'selected' : ''} ${st.isOnLeave ? 'disabled' : ''}`}
+                                onClick={() => {
+                                  if (st.isOnLeave) return;
+                                  field.onChange(st.staffId);
+                                  setOpenDropdown(null);
+                                }}
+                              >
+                                <div className="flex flex-col">
+                                  <span className="text-sm truncate">{st.name}</span>
+                                  <span className="text-[10px] opacity-70">{st.role}</span>
+                                </div>
+                                {st.isOnLeave && (
+                                  <div className="flex items-center gap-1.5 text-[10px] font-bold text-red-400 bg-red-400/10 px-2 py-0.5 rounded-full">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse"></span>
+                                    On Leave
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
                         <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-white/40">
                           ▼
                         </div>
@@ -766,7 +889,7 @@ export function AppointmentForm({ initialData, onSuccess }: AppointmentFormProps
                     name="time"
                     render={({ field }) => (
                       <FormItem>
-                        <div className="relative group w-full">
+                        <div className="relative group w-full premium-dropdown">
                           <label
                             className="absolute z-10 pointer-events-none transition-all duration-200 font-medium"
                             style={{
@@ -785,21 +908,66 @@ export function AppointmentForm({ initialData, onSuccess }: AppointmentFormProps
                           <div className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none text-white/40 group-focus-within:text-fuchsia-400 z-10">
                             <Clock className="h-5 w-5" />
                           </div>
-                          <select
-                            value={field.value || ''}
-                            onChange={field.onChange}
+                          
+                          <button
+                            type="button"
                             disabled={!watchStaff || !watchDate || slotsLoading}
-                            className={`w-full h-14 rounded-xl bg-white/[0.07] border border-white/10 pl-12 pr-10 text-sm outline-none transition-all focus:border-fuchsia-500 appearance-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${!field.value ? 'text-white/40' : 'text-white'}`}
+                            onClick={() => setOpenDropdown(openDropdown === 'time' ? null : 'time')}
+                            className={`w-full h-14 rounded-xl bg-white/[0.07] border border-white/10 pl-12 pr-10 text-left text-sm outline-none transition-all focus:border-fuchsia-500 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center ${!field.value ? 'text-white/40' : 'text-white'}`}
                           >
-                            <option value="" disabled className="bg-[#1a1625] text-white">
-                              {!watchStaff ? "Select a stylist" : slotsLoading ? "Finding slots..." : slots.length === 0 ? "No slots available" : "Choose a time slot"}
-                            </option>
-                            {slots.filter(s => s.available).map((slot: any) => (
-                              <option key={slot.time} value={slot.time} className="bg-[#1a1625] text-white py-2">
-                                {slot.time}
-                              </option>
-                            ))}
-                          </select>
+                            {field.value 
+                              ? field.value
+                              : !watchStaff 
+                                ? "Select a stylist" 
+                                : slotsLoading 
+                                  ? <span className="flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin"/> Finding slots...</span> 
+                                  : slots.length === 0 
+                                    ? "No slots available" 
+                                    : "Choose a time slot"
+                            }
+                          </button>
+
+                          {openDropdown === 'time' && slots.length > 0 && (
+                            <div className="dropdown-menu">
+                              {(() => {
+                                const grouped = slots.filter((s:any) => s.available).reduce((acc: any, slot: any) => {
+                                  const [h] = slot.time.split(':').map(Number);
+                                  let period = 'Evening 🌙';
+                                  if (h < 12) period = 'Morning ☀️';
+                                  else if (h < 17) period = 'Afternoon 🌤️';
+                                  
+                                  if (!acc[period]) acc[period] = [];
+                                  acc[period].push(slot);
+                                  return acc;
+                                }, {});
+
+                                return Object.entries(grouped).map(([period, slotArr]: [string, any]) => (
+                                  <div key={period} className="mb-2">
+                                    <div className="px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-[#a855f7]/70 sticky top-0 bg-[rgba(20,10,40,0.95)] backdrop-blur-md z-10">
+                                      {period}
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-1.5 px-2">
+                                      {slotArr.map((slot: any) => (
+                                        <div
+                                          key={slot.time}
+                                          className={`dropdown-item !justify-center !text-sm ${field.value === slot.time ? 'selected' : ''}`}
+                                          style={{ padding: '8px', marginBottom: 0 }}
+                                          onClick={() => {
+                                            field.onChange(slot.time);
+                                            setOpenDropdown(null);
+                                          }}
+                                        >
+                                          {slot.time}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                ));
+                                
+                              })()}
+                            </div>
+                          )}
+
                           <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-white/40">
                             ▼
                           </div>
