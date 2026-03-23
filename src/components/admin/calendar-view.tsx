@@ -618,20 +618,49 @@ export function CalendarView({ appointments }: CalendarViewProps) {
     const dropD = String(start.getDate()).padStart(2, '0');
     const dropDate = `${dropY}-${dropM}-${dropD}`;
 
-    // ── STEP 2: Normalize drop time — 00:00 means month-view drop (no time) ─
+    // ── STEP 2: Normalize drop time (CRITICAL FIX) ───────────────────────────
+    // In month-view, react-big-calendar passes the drop date at midnight (00:00).
+    // We must NEVER write midnight unless the appointment was actually booked at midnight.
+    //
+    // Source priority for the TIME component:
+    //  1. Raw drop time — only if user dragged to a specific slot (week/day view)
+    //  2. event.start  — the original calendar Date object (always has correct original time)
+    //  3. appointmentData.time string — only if it's non-zero
+    //  4. 09:00 ultimate fallback
     const rawHour = start.getHours();
     const rawMin  = start.getMinutes();
-    const hasTime = rawHour !== 0 || rawMin !== 0;
 
-    // Reconstruct a full Date on the DROP date, using original time if missing
-    let newStart: Date;
-    if (hasTime) {
-      newStart = new Date(dropY, start.getMonth(), start.getDate(), rawHour, rawMin, 0, 0);
+    // Source 1: drop has real time (week/day view drag to a specific slot)
+    const dropHasTime = rawHour !== 0 || rawMin !== 0;
+
+    // Source 2: original calendar event's start Date
+    const originalStart = event.start as Date;
+    const origH = originalStart.getHours();
+    const origM = originalStart.getMinutes();
+    const originalHasTime = origH !== 0 || origM !== 0;
+
+    // Source 3: appointmentData.time string
+    const [apptH, apptM] = (event.appointmentData.time || '09:00').split(':').map(Number);
+    const apptHasTime = apptH !== 0 || apptM !== 0;
+
+    let finalH: number, finalM: number;
+    if (dropHasTime) {
+      // Week/Day view — user explicitly chose a time
+      finalH = rawHour; finalM = rawMin;
+    } else if (originalHasTime) {
+      // Month-view — use the calendar event's original time (most reliable)
+      finalH = origH; finalM = origM;
+    } else if (apptHasTime) {
+      // appointmentData.time string is valid non-zero
+      finalH = apptH; finalM = apptM;
     } else {
-      // Fall back to original appointment time placed on drop date
-      const [origH, origM] = (event.appointmentData.time || '09:00').split(':').map(Number);
-      newStart = new Date(dropY, start.getMonth(), start.getDate(), origH, origM, 0, 0);
+      // Ultimate fallback — avoid midnight, pick 09:00
+      finalH = 9; finalM = 0;
     }
+
+    let newStart = new Date(dropY, start.getMonth(), start.getDate(), finalH, finalM, 0, 0);
+
+    console.log('FINAL START TIME:', newStart.toLocaleString(), '| source:', dropHasTime ? 'drop' : originalHasTime ? 'event.start' : apptHasTime ? 'apptData.time' : 'fallback');
 
     const durationMs = (event.appointmentData.serviceDuration || 30) * 60_000;
     const newEnd = new Date(newStart.getTime() + durationMs);
