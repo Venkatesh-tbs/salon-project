@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Bell, Check, CheckCheck, Loader2, CalendarClock, XCircle, CalendarCheck, CalendarMinus, CheckCircle2 } from 'lucide-react';
+import { Bell, Check, CheckCheck, Loader2, CalendarClock, XCircle, CalendarCheck, CalendarMinus, CheckCircle2, CalendarX } from 'lucide-react';
 import { useNotifications, AppNotification } from '@/hooks/useNotifications';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -36,6 +36,7 @@ export function NotificationsBell() {
       case 'RESCHEDULE':    return <CalendarClock  className="w-4 h-4 text-amber-400" />;
       case 'LEAVE_REQUEST': return <CalendarMinus  className="w-4 h-4 text-orange-400" />;
       case 'LEAVE_STATUS':  return <CheckCircle2   className="w-4 h-4 text-green-400" />;
+      case 'SALON_LEAVE':   return <CalendarX      className="w-4 h-4 text-red-500" />;
       default:              return <Bell           className="w-4 h-4 text-gray-400" />;
     }
   };

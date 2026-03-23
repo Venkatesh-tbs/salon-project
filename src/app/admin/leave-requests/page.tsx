@@ -154,10 +154,49 @@ export default function LeaveRequestsPage() {
     if (ab.staffId === '__SALON__') {
       setAb(prev => ({ ...prev, loading: true }));
       try {
-        const { ref: _ref, set: _set } = await import('firebase/database');
+        const { ref: _ref, set: _set, get: _get, push: _push } = await import('firebase/database');
+        
+        // 1. Check if already exists to avoid duplicate notifications
+        const existingSalonSnap = await _get(_ref(db, `salonLeaves/${ab.date}`));
+        const alreadyExists = existingSalonSnap.exists();
+
         await _set(_ref(db, `salonLeaves/${ab.date}`), {
           type: 'salon', status: 'approved', createdBy: 'admin', createdAt: Date.now()
         });
+
+        // 2. Trigger bulk notifications only if it wasn't already closed
+        if (!alreadyExists) {
+          const staffSnap = await _get(_ref(db, 'staff'));
+          const promises: any[] = [];
+          
+          if (staffSnap.exists()) {
+            staffSnap.forEach((child) => {
+              promises.push(
+                _push(_ref(db, 'notifications'), {
+                  type: 'SALON_LEAVE',
+                  message: `Salon will be closed on ${ab.date}`,
+                  staffId: child.key,
+                  createdAt: Date.now(),
+                  read: false
+                })
+              );
+            });
+          }
+
+          // Global admin notification
+          promises.push(
+            _push(_ref(db, 'notifications'), {
+              type: 'SALON_LEAVE',
+              message: `Salon closed on ${ab.date} (All staff notified)`,
+              staffId: null,
+              createdAt: Date.now(),
+              read: false
+            })
+          );
+
+          await Promise.all(promises);
+        }
+
         toast({ title: '🏪 Salon Closed ✅', description: `Salon marked as closed on ${ab.date}.` });
         setAb(prev => ({ ...prev, date: '', loading: false }));
       } catch (e: any) {
