@@ -58,11 +58,11 @@ export default function HeroCanvas({ onBookNow }: HeroCanvasProps) {
   return (
     <section
       ref={containerRef}
-      className="relative min-h-[80vh] flex flex-col items-center justify-center overflow-hidden bg-transparent"
+      className="relative h-screen w-full flex flex-col items-center justify-center overflow-hidden bg-transparent"
     >
       {/* ── Video Background & Apple Scroll Parallax ── */}
       <motion.div 
-        className="absolute inset-0 w-full h-full overflow-hidden"
+        className="absolute inset-0 z-0 w-full h-full overflow-hidden"
         style={{ scale: videoScale, opacity: videoOpacity }}
       >
         <video
@@ -82,7 +82,7 @@ export default function HeroCanvas({ onBookNow }: HeroCanvasProps) {
           className="md:hidden absolute inset-0 w-full h-full object-cover" 
         />
       </motion.div>
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px]" />
+      <div className="absolute inset-0 z-10 bg-black/60 backdrop-blur-[2px]" />
 
       {/* ambient orbs */}
       <motion.div
@@ -119,7 +119,7 @@ export default function HeroCanvas({ onBookNow }: HeroCanvasProps) {
 
       {/* hero content */}
       <motion.div
-        className="relative z-10 text-center px-6 max-w-5xl mx-auto"
+        className="relative z-20 flex flex-col items-center justify-center h-full text-center px-4 max-w-5xl mx-auto"
         initial={{ opacity: 0, scale: 1.2 }}
         animate={{ opacity: 1, scale: 1, y: [0, -10, 0] }}
         transition={{ 
