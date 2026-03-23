@@ -41,33 +41,30 @@ export const StaffAnalytics: React.FC<StaffAnalyticsProps> = ({ appointments }) 
     });
 
     const staffArray = Object.values(statsMap);
-    const sortedStaff = staffArray.sort((a: StaffStats, b: StaffStats) => {
-      const rateA = a.totalBookings > 0 ? a.completedBookings / a.totalBookings : 0;
-      const rateB = b.totalBookings > 0 ? b.completedBookings / b.totalBookings : 0;
-      return rateB - rateA;
-    });
-
-    let maxEff = -1;
-    let minEff = 200;
     
-    // Bounds check
-    sortedStaff.forEach(s => {
-      if (s.totalBookings > 0) {
-        const eff = s.completedBookings / s.totalBookings;
-        if (eff > maxEff) maxEff = eff;
-        if (eff < minEff) minEff = eff;
-      }
+    // Sort by revenue generated descending
+    const sortedStaff = staffArray.sort((a: StaffStats, b: StaffStats) => {
+      return b.revenueGenerated - a.revenueGenerated;
     });
 
-    return sortedStaff.map(stat => {
-      let badge = "";
-      if (sortedStaff.length > 1 && stat.totalBookings > 0) {
-        const eff = stat.completedBookings / stat.totalBookings;
-        if (eff === maxEff) badge = " 👑 Top Performer";
-        else if (eff === minEff && eff < maxEff) badge = " ⚠️ Needs Attention";
-      }
-      return { ...stat, staffName: `${stat.staffName}${badge}` };
-    });
+    if (sortedStaff.length > 0) {
+      const maxRev = sortedStaff[0].revenueGenerated;
+      const minRev = sortedStaff[sortedStaff.length - 1].revenueGenerated;
+
+      return sortedStaff.map(stat => {
+        let badge = "";
+        if (sortedStaff.length > 1) {
+          if (stat.revenueGenerated === maxRev && maxRev > 0) {
+            badge = " 👑 Top Performer";
+          } else if (stat.revenueGenerated === minRev && minRev < maxRev) {
+            badge = " ⚠️ Needs Attention";
+          }
+        }
+        return { ...stat, staffName: `${stat.staffName}${badge}` };
+      });
+    }
+    
+    return sortedStaff;
   }, [appointments]);
 
   return (
