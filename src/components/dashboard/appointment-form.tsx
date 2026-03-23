@@ -212,9 +212,11 @@ const RippleButton = React.forwardRef<HTMLButtonElement, {
           width: 100%;
           top: 100%;
           left: 0;
-          z-index: 50;
+          z-index: 9999;
           margin-top: 8px;
           padding: 8px;
+          display: block;
+          opacity: 1;
         }
 
         .dropdown-menu::-webkit-scrollbar {
@@ -745,7 +747,7 @@ export function AppointmentForm({ initialData, onSuccess }: AppointmentFormProps
                   name="service"
                   render={({ field }) => (
                     <FormItem>
-                      <div className="relative group w-full premium-dropdown">
+                      <div className={`relative group w-full premium-dropdown ${openDropdown === 'service' ? 'z-50' : 'z-10'}`}>
                         <label
                           className="absolute z-10 pointer-events-none transition-all duration-200 font-medium"
                           style={{
@@ -827,7 +829,7 @@ export function AppointmentForm({ initialData, onSuccess }: AppointmentFormProps
                   name="staff"
                   render={({ field }) => (
                     <FormItem>
-                      <div className="relative group w-full premium-dropdown">
+                      <div className={`relative group w-full premium-dropdown ${openDropdown === 'staff' ? 'z-50' : 'z-10'}`}>
                         <label
                           className="absolute z-10 pointer-events-none transition-all duration-200 font-medium"
                           style={{
@@ -929,7 +931,7 @@ export function AppointmentForm({ initialData, onSuccess }: AppointmentFormProps
                     name="time"
                     render={({ field }) => (
                       <FormItem>
-                        <div className="relative group w-full premium-dropdown">
+                        <div className={`relative group w-full premium-dropdown ${openDropdown === 'time' ? 'z-50' : 'z-10'}`}>
                           <label
                             className="absolute z-10 pointer-events-none transition-all duration-200 font-medium"
                             style={{
