@@ -99,6 +99,15 @@ const SERVICE_ICONS: Record<string, React.ElementType> = {
   flame: Flame,
 };
 
+const SERVICE_EMOJIS: Record<string, string> = {
+  "Haircut & Styling": "✂️",
+  "Beard Trim & Shape": "🧔",
+  "Hair Coloring": "🎨",
+  "Facial Treatment": "💆",
+  "Waxing": "🔥",
+  "Head Massage": "🧠"
+};
+
 // Ripple button component
 const RippleButton = React.forwardRef<HTMLButtonElement, {
   onClick?: () => void;
@@ -197,7 +206,8 @@ const RippleButton = React.forwardRef<HTMLButtonElement, {
           box-shadow: 0 0 30px rgba(168,85,247,0.2);
           overflow-y: auto;
           max-height: 220px;
-          animation: dropFadeIn 0.2s ease;
+          animation: dropFadeIn 0.18s ease;
+          transform-origin: top;
           position: absolute;
           width: 100%;
           top: 100%;
@@ -216,8 +226,8 @@ const RippleButton = React.forwardRef<HTMLButtonElement, {
         }
 
         @keyframes dropFadeIn {
-          from { opacity: 0; transform: translateY(-5px); }
-          to { opacity: 1; transform: translateY(0); }
+          from { opacity: 0; transform: scale(0.95) translateY(-5px); }
+          to { opacity: 1; transform: scale(1) translateY(0); }
         }
 
         .dropdown-item {
@@ -235,15 +245,17 @@ const RippleButton = React.forwardRef<HTMLButtonElement, {
           background: rgba(168,85,247,0.2);
           transform: translateX(4px);
           color: white;
+          box-shadow: 0 0 10px rgba(168,85,247,0.3);
         }
         .dropdown-item.selected {
           background: linear-gradient(90deg, #a855f7, #6366f1);
           color: white;
           font-weight: 600;
+          box-shadow: 0 0 12px rgba(168,85,247,0.5);
         }
         .dropdown-item.disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
+          opacity: 0.6;
+          pointer-events: none;
         }
       `}</style>
     </button>
@@ -325,6 +337,8 @@ export function AppointmentForm({ initialData, onSuccess }: AppointmentFormProps
 
   // Dropdown state
   const [openDropdown, setOpenDropdown] = React.useState<'service' | 'staff' | 'time' | null>(null);
+  const [searchService, setSearchService] = React.useState("");
+  const [searchStaff, setSearchStaff] = React.useState("");
 
   // Close dropdowns on outside click
   React.useEffect(() => {
@@ -765,18 +779,32 @@ export function AppointmentForm({ initialData, onSuccess }: AppointmentFormProps
                         {/* Custom Dropdown Menu */}
                         {openDropdown === 'service' && (
                           <div className="dropdown-menu">
-                            {Array.from(new Map(services.map(s => [s.name, s])).values()).map((svc) => (
+                            <input
+                              type="text"
+                              placeholder="Search service..."
+                              value={searchService}
+                              onChange={(e) => setSearchService(e.target.value)}
+                              className="w-full px-3 py-2 mb-2 bg-black/30 border border-white/5 rounded-lg text-sm outline-none text-white placeholder:text-white/40 focus:border-fuchsia-500/50 transition-colors"
+                              autoFocus
+                            />
+                            {Array.from(new Map(services.map(s => [s.name, s])).values())
+                              .filter(svc => svc.name.toLowerCase().includes(searchService.toLowerCase()))
+                              .map((svc) => (
                               <div
                                 key={svc.id}
                                 className={`dropdown-item ${field.value === svc.name ? 'selected' : ''}`}
                                 onClick={() => {
                                   field.onChange(svc.name);
                                   setOpenDropdown(null);
+                                  setSearchService('');
                                 }}
                               >
-                                <div className="flex flex-col">
-                                  <span className="text-sm">{svc.name}</span>
-                                  <span className="text-[10px] opacity-70">{svc.duration} mins</span>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-lg">{SERVICE_EMOJIS[svc.name] || "✨"}</span>
+                                  <div className="flex flex-col">
+                                    <span className="text-sm">{svc.name}</span>
+                                    <span className="text-[10px] opacity-70">{svc.duration} mins</span>
+                                  </div>
                                 </div>
                                 <span className="text-sm font-semibold">₹{svc.price}</span>
                               </div>
@@ -837,7 +865,17 @@ export function AppointmentForm({ initialData, onSuccess }: AppointmentFormProps
 
                         {openDropdown === 'staff' && staffList.length > 0 && (
                           <div className="dropdown-menu">
-                            {staffList.map((st: any) => (
+                            <input
+                              type="text"
+                              placeholder="Search stylist..."
+                              value={searchStaff}
+                              onChange={(e) => setSearchStaff(e.target.value)}
+                              className="w-full px-3 py-2 mb-2 bg-black/30 border border-white/5 rounded-lg text-sm outline-none text-white placeholder:text-white/40 focus:border-fuchsia-500/50 transition-colors"
+                              autoFocus
+                            />
+                            {staffList
+                              .filter((st: any) => st.name.toLowerCase().includes(searchStaff.toLowerCase()))
+                              .map((st: any) => (
                               <div
                                 key={st.staffId}
                                 className={`dropdown-item ${field.value === st.staffId ? 'selected' : ''} ${st.isOnLeave ? 'disabled' : ''}`}
@@ -845,18 +883,20 @@ export function AppointmentForm({ initialData, onSuccess }: AppointmentFormProps
                                   if (st.isOnLeave) return;
                                   field.onChange(st.staffId);
                                   setOpenDropdown(null);
+                                  setSearchStaff('');
                                 }}
                               >
-                                <div className="flex flex-col">
-                                  <span className="text-sm truncate">{st.name}</span>
-                                  <span className="text-[10px] opacity-70">{st.role}</span>
-                                </div>
-                                {st.isOnLeave && (
-                                  <div className="flex items-center gap-1.5 text-[10px] font-bold text-red-400 bg-red-400/10 px-2 py-0.5 rounded-full">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse"></span>
-                                    On Leave
+                                <div className="flex items-center">
+                                  <div className="flex flex-col">
+                                    <span className="text-sm truncate">{st.name}</span>
+                                    <span className="text-[10px] opacity-70">{st.role}</span>
                                   </div>
-                                )}
+                                  {st.isOnLeave && (
+                                    <span className="text-red-400 text-[10px] ml-2 font-bold whitespace-nowrap">
+                                      ● On Leave
+                                    </span>
+                                  )}
+                                </div>
                               </div>
                             ))}
                           </div>
@@ -943,7 +983,7 @@ export function AppointmentForm({ initialData, onSuccess }: AppointmentFormProps
 
                                 return Object.entries(grouped).map(([period, slotArr]: [string, any]) => (
                                   <div key={period} className="mb-2">
-                                    <div className="px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-[#a855f7]/70 sticky top-0 bg-[rgba(20,10,40,0.95)] backdrop-blur-md z-10">
+                                    <div className="text-[10px] text-white/40 px-2 mt-2 mb-1.5 font-bold uppercase tracking-widest sticky top-0 bg-[rgba(20,10,40,0.95)] backdrop-blur-md z-10">
                                       {period}
                                     </div>
                                     <div className="grid grid-cols-2 gap-1.5 px-2">
