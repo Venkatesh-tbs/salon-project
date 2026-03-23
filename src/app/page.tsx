@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import dynamic from "next/dynamic";
 import HeroCanvas from "@/components/HeroCanvas";
 import { CursorGlow } from "@/components/ui/cursor-glow";
@@ -40,7 +40,14 @@ const Section: React.FC<{ children: React.ReactNode; className?: string; id?: st
 
 export default function Home() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
   const bookingRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleScroll = () => setIsScrolled(window.scrollY > 50);
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   const scrollToBooking = useCallback(() => {
     setIsMenuOpen(false);
@@ -67,12 +74,24 @@ export default function Home() {
         initial={{ y: -20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-        className="fixed top-0 inset-x-0 z-[60] px-6 py-4 flex items-center justify-between"
-        style={{
-          background: isMenuOpen ? "rgba(7,5,15,0.98)" : "linear-gradient(to bottom, rgba(7,5,15,0.95), transparent)",
-          backdropFilter: "blur(12px)",
-          borderBottom: isMenuOpen ? "1px solid rgba(255,255,255,0.1)" : "1px solid rgba(255,255,255,0.04)",
-        }}
+        className={`fixed top-0 inset-x-0 z-[60] px-6 py-4 flex items-center justify-between transition-all duration-300 ${
+          isScrolled && !isMenuOpen ? "bg-black/30 backdrop-blur-xl border-b border-white/10" : ""
+        }`}
+        style={
+          isMenuOpen
+            ? {
+                background: "rgba(7,5,15,0.98)",
+                backdropFilter: "blur(12px)",
+                borderBottom: "1px solid rgba(255,255,255,0.1)",
+              }
+            : isScrolled
+            ? {} // Let tailwind handle the glass effect
+            : {
+                background: "linear-gradient(to bottom, rgba(7,5,15,0.95), transparent)",
+                backdropFilter: "blur(12px)",
+                borderBottom: "1px solid rgba(255,255,255,0.04)",
+              }
+        }
       >
         <Link href="/" className="group flex items-center gap-2 relative z-[70]">
            <span

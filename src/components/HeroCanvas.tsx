@@ -25,7 +25,8 @@ export default function HeroCanvas({ onBookNow }: HeroCanvasProps) {
   // Scroll effect (Apple Style)
   const { scrollY } = useScroll();
   const videoScale = useTransform(scrollY, [0, 500], [1, 1.1]);
-  const videoOpacity = useTransform(scrollY, [0, 500], [0.6, 0.3]);
+  const videoOpacity = useTransform(scrollY, [0, 500], [1, 0.8]);
+  const textOpacity = useTransform(scrollY, [0, 300], [1, 0]);
 
   // Generate particles client-side only to prevent SSR/client mismatch
   const [mounted, setMounted] = React.useState(false);
@@ -72,17 +73,17 @@ export default function HeroCanvas({ onBookNow }: HeroCanvasProps) {
           playsInline
           preload="none"
           poster="/hero-fallback.jpg"
-          className="hidden md:block absolute inset-0 w-full h-full object-cover"
+          className="hidden md:block absolute inset-0 w-full h-full object-cover object-center md:object-[center_top]"
         >
           <source src="/videos/salon-hero.mp4" type="video/mp4" />
         </video>
         <img 
           src="/hero-fallback.jpg" 
           alt="Salon Hero"
-          className="md:hidden absolute inset-0 w-full h-full object-cover" 
+          className="md:hidden absolute inset-0 w-full h-full object-cover object-center md:object-[center_top]" 
         />
       </motion.div>
-      <div className="absolute inset-0 z-10 bg-black/60 backdrop-blur-[2px]" />
+      <div className="absolute inset-0 z-10 bg-black/70 backdrop-blur-[3px]" />
 
       {/* ambient orbs */}
       <motion.div
@@ -120,13 +121,7 @@ export default function HeroCanvas({ onBookNow }: HeroCanvasProps) {
       {/* hero content */}
       <motion.div
         className="relative z-20 flex flex-col items-center justify-center h-full text-center px-4 max-w-5xl mx-auto"
-        initial={{ opacity: 0, scale: 1.2 }}
-        animate={{ opacity: 1, scale: 1, y: [0, -10, 0] }}
-        transition={{ 
-          duration: 1.2, ease: "easeOut",
-          y: { repeat: Infinity, duration: 4, ease: "easeInOut", delay: 1.2 } 
-        }}
-        style={{ x: parallaxX, y: parallaxY }}
+        style={{ x: parallaxX, y: parallaxY, opacity: textOpacity }}
       >
         <div className="mb-4">
           <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-fuchsia-500/30 bg-fuchsia-500/10 text-fuchsia-300 text-sm font-medium tracking-widest uppercase">
@@ -135,7 +130,13 @@ export default function HeroCanvas({ onBookNow }: HeroCanvasProps) {
           </span>
         </div>
 
-        <h1
+        <motion.h1
+          initial={{ opacity: 0, y: 40 }}
+          animate={{ opacity: 1, y: [0, -10, 0] }}
+          transition={{ 
+            duration: 1, ease: "easeOut",
+            y: { repeat: Infinity, duration: 4, ease: "easeInOut", delay: 1 } 
+          }}
           className="text-5xl sm:text-7xl md:text-8xl font-black tracking-tight leading-none mb-6"
           style={{ fontFamily: "'Syne', sans-serif" }}
         >
@@ -147,7 +148,7 @@ export default function HeroCanvas({ onBookNow }: HeroCanvasProps) {
             BEYOND
           </span>
           <span className="block text-white">LIMITS</span>
-        </h1>
+        </motion.h1>
 
         <p
           className="text-base sm:text-lg md:text-xl text-white/50 max-w-xl mx-auto mb-10 leading-relaxed px-4"
@@ -160,7 +161,7 @@ export default function HeroCanvas({ onBookNow }: HeroCanvasProps) {
         <div className="flex flex-col sm:flex-row gap-4 justify-center px-4 w-full sm:w-auto">
           <button
             onClick={onBookNow}
-            className="relative group px-8 py-4 rounded-2xl font-semibold text-white overflow-hidden transition-all duration-300 hover:shadow-2xl hover:shadow-purple-500/40 hover:scale-105 active:scale-95 w-full sm:w-auto"
+            className="relative group px-8 py-4 rounded-2xl font-semibold text-white overflow-hidden transition-all duration-300 hover:shadow-2xl hover:shadow-purple-500/60 hover:scale-105 active:scale-95 w-full sm:w-auto"
             style={{
               background: "linear-gradient(135deg, #c026d3, #7c3aed)",
             }}
