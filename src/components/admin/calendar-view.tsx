@@ -597,51 +597,73 @@ export function CalendarView({ appointments }: CalendarViewProps) {
     // Derive timeStr from the normalized newStart
     const timeStr = `${String(newStart.getHours()).padStart(2, '0')}:${String(newStart.getMinutes()).padStart(2, '0')}`;
 
-    const dropStaffId = resourceId === 'unassigned' ? '' : (resourceId || '');
+    // ── STEP 3: Resolve target staff EARLY (BEFORE leave check) ─────────────
+    // BUG FIX: In month-view, resourceId is undefined → must fall back to original staffId
+    // This ensures leave validation always runs regardless of calendar view.
+    let updatedStaffId    = event.appointmentData.staffId    || '';
+    let updatedStaffName  = event.appointmentData.staffName  || '';
+    let updatedStaffEmail = event.appointmentData.staffEmail || '';
 
-    // ── STEP 3: Fetch leave data & validate (STRICT, synchronous fetch) ──────
-    if (dropStaffId) {
+    if (resourceId !== undefined && resourceId !== null &&
+        resourceId !== (event.appointmentData.staffId || 'unassigned')) {
+      if (resourceId === 'unassigned') {
+        updatedStaffId = ''; updatedStaffName = ''; updatedStaffEmail = '';
+      } else {
+        const staffMatch = resources.find((r) => r.resourceId === resourceId);
+        if (staffMatch) {
+          updatedStaffId    = staffMatch.resourceId;
+          updatedStaffName  = staffMatch.resourceTitle;
+          updatedStaffEmail = staffMatch.email;
+        }
+      }
+    }
+
+    // This is the single source of truth for which staff we're dropping onto
+    const effectiveStaffId = updatedStaffId;
+
+    // ── STEP 4: Fetch fresh leave data & validate ────────────────────────────
+    // effectiveStaffId is always populated (even in month-view) so this check
+    // will NEVER be skipped due to a missing resourceId.
+    if (effectiveStaffId) {
       const { ref: dbRef, get: dbGet } = await import('firebase/database');
-      const leaveSnap = await dbGet(dbRef(db, `staffLeaves/${dropStaffId}/${dropDate}`));
+      const leaveSnap = await dbGet(dbRef(db, `staffLeaves/${effectiveStaffId}/${dropDate}`));
 
       if (leaveSnap.exists()) {
         const leaveData = leaveSnap.val();
         const status = leaveData?.status || 'approved';
 
         if (status === 'approved') {
-          // ── Full-day leave → hard block ────────────────────────────────────
+          // ── Full-day leave → hard block ──────────────────────────────────
           if (leaveData === true || leaveData?.unavailable === true || leaveData?.type === 'full') {
             toast({ title: "Staff Unavailable (Leave)", description: "Staff is on full-day leave on this date.", variant: "destructive" });
-            return;
+            return; // HARD STOP — no Firebase write, no state update
           }
 
-          // ── Partial leave → Date-object overlap check ──────────────────────
+          // ── Partial leave → strict Date-object overlap ───────────────────
           if (leaveData?.type === 'partial' && leaveData.startTime && leaveData.endTime) {
             const [sH, sM] = leaveData.startTime.split(':').map(Number);
             const [eH, eM] = leaveData.endTime.split(':').map(Number);
-
-            // Build leave window as Date objects on the same drop date
             const leaveStart = new Date(dropY, start.getMonth(), start.getDate(), sH, sM, 0, 0);
             const leaveEnd   = new Date(dropY, start.getMonth(), start.getDate(), eH, eM, 0, 0);
 
-            console.log('[LeaveBlock] Checking partial leave overlap:', {
-              newStart:   newStart.toTimeString().slice(0, 5),
-              newEnd:     newEnd.toTimeString().slice(0, 5),
+            console.log('[LeaveBlock] Drop validation:', {
+              start:      newStart.toTimeString().slice(0, 5),
+              end:        newEnd.toTimeString().slice(0, 5),
               leaveStart: leaveStart.toTimeString().slice(0, 5),
               leaveEnd:   leaveEnd.toTimeString().slice(0, 5),
+              staffId:    effectiveStaffId,
               overlap:    newStart < leaveEnd && newEnd > leaveStart,
             });
 
-            // STRICT overlap: newStart < leaveEnd AND newEnd > leaveStart
             if (newStart < leaveEnd && newEnd > leaveStart) {
               toast({ title: "Staff Unavailable (Leave)", description: `Staff is on partial leave ${leaveData.startTime}–${leaveData.endTime}. Drop blocked.`, variant: "destructive" });
-              return; // ← HARD BLOCK: no Firebase write, no state update
+              return; // HARD STOP
             }
           }
         }
       }
 
-      // ── Guard: mandatory breaks (same Date-object approach) ───────────────
+      // ── Mandatory break times ─────────────────────────────────────────────
       const lunchStart = new Date(dropY, start.getMonth(), start.getDate(), 13, 0, 0, 0);
       const lunchEnd   = new Date(dropY, start.getMonth(), start.getDate(), 14, 0, 0, 0);
       const brkStart   = new Date(dropY, start.getMonth(), start.getDate(), 17, 0, 0, 0);
@@ -656,27 +678,7 @@ export function CalendarView({ appointments }: CalendarViewProps) {
       }
     }
 
-    // ── STEP 4: Resolve updated staff fields ─────────────────────────────────
-    let updatedStaffId    = event.appointmentData.staffId || '';
-    let updatedStaffName  = event.appointmentData.staffName || '';
-    let updatedStaffEmail = event.appointmentData.staffEmail || '';
-
-    if (resourceId && resourceId !== (event.appointmentData.staffId || 'unassigned')) {
-      if (resourceId === 'unassigned') {
-        updatedStaffId = ''; updatedStaffName = ''; updatedStaffEmail = '';
-      } else {
-        const staffMatch = resources.find((r) => r.resourceId === resourceId);
-        if (staffMatch) {
-          updatedStaffId    = staffMatch.resourceId;
-          updatedStaffName  = staffMatch.resourceTitle;
-          updatedStaffEmail = staffMatch.email;
-        }
-      }
-    }
-
-    const targetStaffId = (resourceId && resourceId !== 'unassigned') ? resourceId : updatedStaffId;
-
-    // ── STEP 5: In-memory booking conflict check (Date-object approach) ───────
+    // ── STEP 5: In-memory booking conflict check ──────────────────────────────
     const newStartMs = newStart.getTime();
     const newEndMs   = newEnd.getTime();
 
@@ -684,7 +686,7 @@ export function CalendarView({ appointments }: CalendarViewProps) {
       if (b.id === event.id) return false;
       if (b.status === 'cancelled') return false;
       const appt = b.appointmentData;
-      if ((appt.staffId || '') !== (targetStaffId || '')) return false;
+      if ((appt.staffId || '') !== (effectiveStaffId || '')) return false;
       if (appt.date !== dropDate) return false;
       const [bH, bM] = appt.time.split(':').map(Number);
       const bStartMs = new Date(dropY, start.getMonth(), start.getDate(), bH, bM).getTime();
