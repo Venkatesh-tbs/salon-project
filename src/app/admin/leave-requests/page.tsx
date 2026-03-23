@@ -23,6 +23,7 @@ export default function LeaveRequestsPage() {
   const [requests, setRequests] = useState<LeaveRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [staffList, setStaffList] = useState<{ id: string; name: string }[]>([]);
+  const [salonClosures, setSalonClosures] = useState<string[]>([]);
   const { toast } = useToast();
 
   // Admin direct-block form state
@@ -36,6 +37,16 @@ export default function LeaveRequestsPage() {
   useEffect(() => {
     const staffRef = ref(db, 'staff');
     let staffMap: Record<string, string> = {};
+
+    // Load salon closures
+    const salonRef = ref(db, 'salonLeaves');
+    const salonListener = onValue(salonRef, (snap) => {
+      if (snap.exists()) {
+        setSalonClosures(Object.keys(snap.val()).sort());
+      } else {
+        setSalonClosures([]);
+      }
+    });
 
     const staffListener = onValue(staffRef, (snap) => {
       if (snap.exists()) {
@@ -96,7 +107,10 @@ export default function LeaveRequestsPage() {
       return () => off(leavesRef, 'value', listener);
     });
 
-    return () => off(staffRef, 'value', staffListener);
+    return () => {
+      off(staffRef, 'value', staffListener);
+      off(salonRef, 'value', salonListener);
+    };
   }, []);
 
   const handleUpdateStatus = async (req: LeaveRequest, newStatus: 'approved' | 'rejected') => {
@@ -132,7 +146,28 @@ export default function LeaveRequestsPage() {
   };
 
   const handleAdminDirectBlock = async () => {
-    if (!ab.staffId || !ab.date) {
+    if (!ab.date) {
+      toast({ title: 'Missing Fields', description: 'Select a date.', variant: 'destructive' });
+      return;
+    }
+    // Salon-wide closure — no staff needed
+    if (ab.staffId === '__SALON__') {
+      setAb(prev => ({ ...prev, loading: true }));
+      try {
+        const { ref: _ref, set: _set } = await import('firebase/database');
+        await _set(_ref(db, `salonLeaves/${ab.date}`), {
+          type: 'salon', status: 'approved', createdBy: 'admin', createdAt: Date.now()
+        });
+        toast({ title: '🏪 Salon Closed ✅', description: `Salon marked as closed on ${ab.date}.` });
+        setAb(prev => ({ ...prev, date: '', loading: false }));
+      } catch (e: any) {
+        toast({ title: 'Error', description: e.message, variant: 'destructive' });
+        setAb(prev => ({ ...prev, loading: false }));
+      }
+      return;
+    }
+
+    if (!ab.staffId) {
       toast({ title: 'Missing Fields', description: 'Select a staff member and date.', variant: 'destructive' });
       return;
     }
@@ -213,6 +248,7 @@ export default function LeaveRequestsPage() {
             className="h-10 px-3 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-brand-purple"
           >
             <option value="" className="bg-[#07050f]">Select Staff</option>
+            <option value="__SALON__" className="bg-[#07050f] font-bold text-red-400">🏪 Entire Salon (Closure)</option>
             {staffList.map(s => <option key={s.id} value={s.id} className="bg-[#07050f]">{s.name}</option>)}
           </select>
           {/* Date */}
@@ -221,34 +257,59 @@ export default function LeaveRequestsPage() {
             onChange={e => setAb(p => ({ ...p, date: e.target.value }))}
             className="h-10 px-3 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-brand-purple"
           />
-          {/* Type */}
-          <select
-            value={ab.type}
-            onChange={e => setAb(p => ({ ...p, type: e.target.value as 'full' | 'partial' }))}
-            className="h-10 px-3 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-brand-purple"
-          >
-            <option value="full" className="bg-[#07050f]">Full Day</option>
-            <option value="partial" className="bg-[#07050f]">Partial</option>
-          </select>
-          {/* Time range — only for partial */}
-          {ab.type === 'partial' && (
+          {/* Type & time range — hidden for salon-wide closure */}
+          {ab.staffId !== '__SALON__' && (
             <>
-              <input type="time" value={ab.startTime} onChange={e => setAb(p => ({ ...p, startTime: e.target.value }))}
-                className="h-10 px-3 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-brand-purple" />
-              <span className="text-white/40 text-sm">to</span>
-              <input type="time" value={ab.endTime} onChange={e => setAb(p => ({ ...p, endTime: e.target.value }))}
-                className="h-10 px-3 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-brand-purple" />
+              <select
+                value={ab.type}
+                onChange={e => setAb(p => ({ ...p, type: e.target.value as 'full' | 'partial' }))}
+                className="h-10 px-3 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-brand-purple"
+              >
+                <option value="full" className="bg-[#07050f]">Full Day</option>
+                <option value="partial" className="bg-[#07050f]">Partial</option>
+              </select>
+              {ab.type === 'partial' && (
+                <>
+                  <input type="time" value={ab.startTime} onChange={e => setAb(p => ({ ...p, startTime: e.target.value }))}
+                    className="h-10 px-3 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-brand-purple" />
+                  <span className="text-white/40 text-sm">to</span>
+                  <input type="time" value={ab.endTime} onChange={e => setAb(p => ({ ...p, endTime: e.target.value }))}
+                    className="h-10 px-3 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-brand-purple" />
+                </>
+              )}
             </>
           )}
           <button
-            disabled={ab.loading || !ab.staffId || !ab.date}
+            disabled={ab.loading || !ab.date || (ab.staffId !== '__SALON__' && !ab.staffId)}
             onClick={handleAdminDirectBlock}
             className="h-10 px-5 rounded-xl bg-brand-purple/20 text-brand-purple border border-brand-purple/30 hover:bg-brand-purple/30 font-bold text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            {ab.loading ? 'Saving…' : '🔒 Block'}
+            {ab.loading ? 'Saving…' : ab.staffId === '__SALON__' ? '🏪 Close Salon' : '🔒 Block'}
           </button>
         </div>
       </div>
+
+      {/* ── Salon Closures List ───────────────────────────────────────────── */}
+      {salonClosures.length > 0 && (
+        <div className="mb-6 p-4 rounded-2xl border border-red-500/20 bg-red-500/5">
+          <span className="text-red-400 font-black text-xs uppercase tracking-widest block mb-3">🏪 Salon Closed Dates</span>
+          <div className="flex flex-wrap gap-2">
+            {salonClosures.map(d => (
+              <div key={d} className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-red-500/10 border border-red-500/20">
+                <span className="text-red-300 text-sm font-medium">{d}</span>
+                <button
+                  onClick={async () => {
+                    const { ref: _r, remove: _rm } = await import('firebase/database');
+                    await _rm(_r(db, `salonLeaves/${d}`));
+                    toast({ title: 'Closure removed', description: `${d} is now open.` });
+                  }}
+                  className="text-red-400/50 hover:text-red-300 transition-colors text-sm leading-none"
+                >✕</button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="bg-white/5 border border-white/10 rounded-3xl overflow-hidden backdrop-blur-xl">
         <div className="overflow-x-auto">

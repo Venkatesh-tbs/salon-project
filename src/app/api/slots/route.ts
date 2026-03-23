@@ -35,6 +35,12 @@ export async function GET(req: Request) {
   }
 
   try {
+    // ── PRIORITY 1: Salon-wide closure check ─────────────────────────────────
+    const salonLeaveSnap = await get(ref(db, `salonLeaves/${date}`));
+    if (salonLeaveSnap.exists()) {
+      return NextResponse.json({ slots: [], salonClosed: true });
+    }
+
     // 1. Fetch staff availability
     const staffRef = ref(db, `staff/${staffId}`);
     const staffSnap = await get(staffRef);

@@ -31,7 +31,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
-import { ref, push } from 'firebase/database';
+import { ref, push, get } from 'firebase/database';
 import { db } from '@/firebase';
 import { Appointment, Service, subscribeToServices, initDefaultServices, checkBookingOverlap } from '@/firebase/db';
 import { RazorpayModal } from '@/components/dashboard/RazorpayModal';
@@ -395,6 +395,19 @@ export function AppointmentForm({ initialData, onSuccess }: AppointmentFormProps
     values: z.infer<typeof formSchema>,
     paymentId?: string
   ) => {
+    // ── PRIORITY 0: Salon-wide closure check ─────────────────────────────────
+    if (values.date) {
+      const salonSnap = await get(ref(db, `salonLeaves/${values.date}`));
+      if (salonSnap.exists()) {
+        toast({
+          variant: 'destructive',
+          title: '🏪 Salon Closed',
+          description: `The salon is closed on ${values.date}. Please choose a different date.`,
+        });
+        return;
+      }
+    }
+
     // ── CRITICAL: Block past date/time bookings ───────────────────────────────
     if (values.date && values.time) {
       const [bH, bM] = values.time.split(':').map(Number);

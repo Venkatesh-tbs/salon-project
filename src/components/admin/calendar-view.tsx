@@ -426,6 +426,7 @@ export function CalendarView({ appointments }: CalendarViewProps) {
   const [isMobile, setIsMobile] = useState(false);
   const [resources, setResources] = useState<any[]>([]);
   const [leaveDates, setLeaveDates] = useState<Set<string>>(new Set());
+  const [salonDates, setSalonDates] = useState<Set<string>>(new Set());
   const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -473,6 +474,19 @@ export function CalendarView({ appointments }: CalendarViewProps) {
       setLeaveDates(dates);
     });
     return () => off(leavesRef, 'value', listener);
+  }, []);
+
+  // ── Fetch salon-wide closure dates for calendar tinting ───────────────────
+  useEffect(() => {
+    const salonRef = ref(db, 'salonLeaves');
+    const listener = onValue(salonRef, (snap) => {
+      if (snap.exists()) {
+        setSalonDates(new Set(Object.keys(snap.val())));
+      } else {
+        setSalonDates(new Set());
+      }
+    });
+    return () => off(salonRef, 'value', listener);
   }, []);
 
   const allEvents = useMemo<CalendarEvent[]>(() => {
@@ -539,6 +553,20 @@ export function CalendarView({ appointments }: CalendarViewProps) {
     const mm = String(date.getMonth() + 1).padStart(2, '0');
     const dd = String(date.getDate()).padStart(2, '0');
     const dateStr = `${yyyy}-${mm}-${dd}`;
+
+    // Salon closed — highest priority, strong red overlay
+    if (salonDates.has(dateStr)) {
+      return {
+        style: {
+          background: 'rgba(239,68,68,0.18)',
+          boxShadow: 'inset 0 0 0 2px rgba(239,68,68,0.4)',
+          position: 'relative' as const,
+        },
+        className: 'salon-closed-day',
+      };
+    }
+
+    // Staff leave — softer tint
     if (leaveDates.has(dateStr)) {
       return {
         style: {
@@ -548,7 +576,7 @@ export function CalendarView({ appointments }: CalendarViewProps) {
       };
     }
     return {};
-  }, [leaveDates]);
+  }, [leaveDates, salonDates]);
 
   const onEventDrop = useCallback(async ({ event, start, end, resourceId }: any) => {
     // ── Guard: terminal statuses ──────────────────────────────────────────────
@@ -559,6 +587,20 @@ export function CalendarView({ appointments }: CalendarViewProps) {
     if (event.status === 'cancelled') {
       toast({ title: "Not Allowed", description: "Cancelled bookings cannot be rescheduled.", variant: "destructive" });
       return;
+    }
+
+    // ── PRIORITY 1: Salon-wide closure (fetch fresh from Firebase) ────────────
+    const dropYearCheck = start.getFullYear();
+    const dropMonthCheck = String(start.getMonth() + 1).padStart(2, '0');
+    const dropDayCheck = String(start.getDate()).padStart(2, '0');
+    const dropDateCheck = `${dropYearCheck}-${dropMonthCheck}-${dropDayCheck}`;
+    {
+      const { ref: _sr, get: _sg } = await import('firebase/database');
+      const salonSnap = await _sg(_sr(db, `salonLeaves/${dropDateCheck}`));
+      if (salonSnap.exists()) {
+        toast({ title: '🏪 Salon Closed', description: `The salon is closed on ${dropDateCheck}. No rescheduling allowed.`, variant: 'destructive' });
+        return; // HARD STOP — highest priority
+      }
     }
 
     // ── Guard: past bookings ─────────────────────────────────────────────────
@@ -820,6 +862,21 @@ export function CalendarView({ appointments }: CalendarViewProps) {
 
           /* MONTH GRID */
           .rbc-month-view { border: 1px solid rgba(255,255,255,0.07) !important; border-radius: 12px; }
+
+          /* Salon-closed day overlay */
+          .salon-closed-day { position: relative !important; }
+          .salon-closed-day::after {
+            content: '🏪 Closed';
+            position: absolute;
+            top: 4px; right: 6px;
+            font-size: 9px;
+            font-weight: 800;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: rgba(239,68,68,0.75);
+            pointer-events: none;
+            z-index: 5;
+          }
           .rbc-month-row { 
             border-color: rgba(255,255,255,0.06) !important; 
             max-height: 180px; 
