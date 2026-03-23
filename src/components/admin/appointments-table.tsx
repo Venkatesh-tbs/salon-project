@@ -219,7 +219,9 @@ export function AppointmentsTable({ appointments, isLoading = false, staffView =
   return (
     <div className="glass-panel rounded-2xl overflow-hidden border border-white/10 shadow-2xl relative">
       <div className="absolute top-0 right-1/4 w-64 h-64 bg-brand-purple/10 rounded-full blur-[100px] pointer-events-none" />
-      <div className="overflow-x-auto relative z-10">
+      
+      {/* ── DESKTOP TABLE ── */}
+      <div className="hidden md:block overflow-x-auto relative z-10">
         <table className="w-full text-left text-sm text-white/70">
           <thead className="bg-[#040406]/60 backdrop-blur-md text-xs uppercase text-white/40 border-b border-white/10">
             <tr>
@@ -355,12 +357,69 @@ export function AppointmentsTable({ appointments, isLoading = false, staffView =
         </table>
       </div>
 
+      {/* ── MOBILE CARD VIEW ── */}
+      <div className="md:hidden flex flex-col gap-3 p-4 relative z-10">
+        {visibleAppointments.map((appt) => {
+          const cfg = STATUS_CONFIG[appt.status] ?? STATUS_CONFIG.pending;
+          const isActing = loadingId?.startsWith(appt.id ?? '');
+          return (
+            <div key={appt.id} className="p-4 rounded-xl bg-white/5 border border-white/10 flex flex-col gap-3 shadow-lg">
+              <div className="flex justify-between items-start">
+                <div>
+                  <div className="font-semibold text-white capitalize text-base">{appt.name}</div>
+                  <div className="text-sm text-white/50 flex flex-col gap-1.5 mt-2">
+                    <span className="flex items-center gap-2"><Phone className="w-4 h-4 text-white/30" /> {appt.phone}</span>
+                    <span className="flex items-center gap-2"><Tag className="w-4 h-4 text-white/30" /> {appt.service}</span>
+                    <span className="flex items-center gap-2 text-brand-pink font-medium"><Clock className="w-4 h-4" /> {appt.date ? format(new Date(appt.date + 'T00:00:00'), 'MMM d') : ''} @ {appt.time}</span>
+                  </div>
+                </div>
+                <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-semibold tracking-wide uppercase ${cfg.badgeClass}`}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${cfg.dotClass} animate-pulse`} />
+                  {cfg.label}
+                </span>
+              </div>
+              
+              {!staffView && (
+                <div className="pt-3 border-t border-white/10">
+                  <span className="text-xs text-white/40 mb-1.5 block">Assign Stylist</span>
+                  <select
+                    value={appt.staffId || ''}
+                    onChange={(e) => appt.id && handleAssignStaff(appt.id, e.target.value)}
+                    className="w-full bg-[#07050f] border border-white/10 text-white text-sm rounded-xl px-4 py-3 outline-none focus:border-emerald-500 transition-colors h-12"
+                  >
+                    <option value="">Unassigned</option>
+                    {staffList.map((s) => (
+                      <option key={s.staffId} value={s.staffId}>{s.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <div className="flex flex-wrap gap-2 pt-3 border-t border-white/10 mt-1">
+                {!staffView && appt.status === 'pending' && (
+                  <button onClick={() => handleStatusChange(appt, 'confirmed')} disabled={!!isActing} className="flex-1 min-h-[48px] px-2 flex items-center justify-center gap-2 rounded-xl text-sm font-semibold text-blue-400 bg-blue-400/10 border border-blue-400/20 active:scale-95 transition-all">Confirm</button>
+                )}
+                {(appt.status === 'pending' || appt.status === 'confirmed') && (
+                  <button onClick={() => handleStatusChange(appt, 'completed')} disabled={!!isActing} className="flex-1 min-h-[48px] px-2 flex items-center justify-center gap-2 rounded-xl text-sm font-semibold text-green-400 bg-green-400/10 border border-green-400/20 active:scale-95 transition-all">Complete</button>
+                )}
+                {!staffView && appt.status !== 'cancelled' && appt.status !== 'completed' && (
+                  <button onClick={() => handleStatusChange(appt, 'cancelled')} disabled={!!isActing} className="flex-1 min-h-[48px] px-2 flex items-center justify-center gap-2 rounded-xl text-sm font-semibold text-red-400 bg-red-400/10 border border-red-400/20 active:scale-95 transition-all">Cancel</button>
+                )}
+                {!staffView && (
+                  <button onClick={() => appt.id && handleDelete(appt.id)} disabled={!!isActing} className="min-h-[48px] h-[48px] w-[48px] flex items-center justify-center rounded-xl text-white/30 hover:text-red-400 bg-white/5 border border-transparent hover:border-red-400/20 active:scale-95 transition-all"><Trash2 className="w-5 h-5" /></button>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
       {/* Show More / Show Less */}
       {appointments.length > 5 && (
         <div className="flex justify-center pt-1 pb-4">
           <button
             onClick={() => hasMore ? setVisibleCount(v => v + 5) : setVisibleCount(5)}
-            className="flex items-center gap-2 px-5 py-2 rounded-xl text-xs font-bold text-white/50 hover:text-brand-purple border border-white/10 hover:border-brand-purple/30 bg-white/[0.02] hover:bg-brand-purple/5 transition-all duration-200"
+            className="flex items-center gap-2 px-6 py-3 min-h-[48px] rounded-xl text-sm font-bold text-white/50 hover:text-brand-purple border border-white/10 hover:border-brand-purple/30 bg-white/[0.02] hover:bg-brand-purple/5 active:scale-95 transition-all duration-200"
           >
             <ChevronRight className={`w-3.5 h-3.5 transition-transform duration-200 ${hasMore ? '' : 'rotate-90'}`} />
             {hasMore ? `Show More (${appointments.length - visibleCount} remaining)` : 'Show Less'}

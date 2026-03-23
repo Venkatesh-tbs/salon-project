@@ -145,7 +145,7 @@ const RippleButton = React.forwardRef<HTMLButtonElement, {
       type={type}
       disabled={disabled || loading}
       onClick={handleClick}
-      className="relative w-full py-4 rounded-2xl font-bold text-white overflow-hidden transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed z-10"
+      className="relative w-full min-h-[48px] py-4 rounded-xl font-bold text-white overflow-hidden transition-all duration-300 hover:scale-[1.02] active:scale-95 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed z-10 text-base"
       style={{
         backgroundImage: loading
           ? "linear-gradient(135deg, #9333ea, #6d28d9)"
@@ -217,6 +217,33 @@ const RippleButton = React.forwardRef<HTMLButtonElement, {
           padding: 8px;
           display: block;
           opacity: 1;
+        }
+
+        @media (max-width: 768px) {
+          .dropdown-menu {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            top: auto;
+            width: 100%;
+            max-height: 60vh;
+            border-radius: 16px 16px 0 0;
+            background: rgba(20,10,40,0.95);
+            backdrop-filter: blur(20px);
+            z-index: 9999;
+            overflow-y: auto;
+            margin-top: 0;
+            transform-origin: bottom;
+            animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            padding-bottom: env(safe-area-inset-bottom, 20px);
+            border: 1px solid rgba(255,255,255,0.05);
+            border-bottom: none;
+            box-shadow: 0 -10px 40px rgba(0,0,0,0.5);
+          }
+          @keyframes slideUp {
+            from { transform: translateY(100%); }
+            to { transform: translateY(0); }
+          }
         }
 
         .dropdown-menu::-webkit-scrollbar {
@@ -637,7 +664,7 @@ export function AppointmentForm({ initialData, onSuccess }: AppointmentFormProps
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.9 }}
-            className="text-center py-8 flex flex-col items-center gap-4 bg-white/[0.03] rounded-3xl border border-white/10 p-6 md:p-10"
+            className="text-center py-8 flex flex-col items-center gap-3 md:gap-4 bg-white/[0.03] rounded-3xl border border-white/10 p-4 md:p-10"
           >
             <div className="text-6xl animate-bounce">✨</div>
             <h3 className="text-2xl font-bold text-white font-syne">
@@ -678,19 +705,19 @@ export function AppointmentForm({ initialData, onSuccess }: AppointmentFormProps
                     <Sparkles className="w-4 h-4 animate-pulse" />
                     <span>AI Intelligent Booking Assistant</span>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex flex-col md:flex-row gap-3">
                     <input
                       placeholder="e.g., 'Jane - hair cut tomorrow at 4pm'"
                       value={aiRequest}
                       onChange={(e) => setAiRequest(e.target.value)}
                       onKeyDown={(e) => e.key === 'Enter' && handleAiExtraction()}
-                      className="flex-1 h-12 rounded-xl bg-black/40 border border-white/10 px-5 text-sm text-white focus:outline-none focus:border-fuchsia-500 transition-all placeholder:text-white/20"
+                      className="flex-1 h-12 rounded-xl bg-black/40 border border-white/10 px-5 text-sm md:text-base text-white focus:outline-none focus:border-fuchsia-500 transition-all placeholder:text-white/20 w-full"
                     />
                     <button
                       type="button"
                       onClick={handleAiExtraction}
                       disabled={isAiLoading || !aiRequest.trim()}
-                      className="h-12 px-6 rounded-xl text-sm font-bold bg-white text-black hover:bg-white/90 disabled:opacity-50 transition-all shadow-[0_0_20px_rgba(255,255,255,0.1)]"
+                      className="min-h-[48px] px-6 rounded-xl text-sm md:text-base font-bold bg-white text-black hover:bg-white/90 disabled:opacity-50 transition-all shadow-[0_0_20px_rgba(255,255,255,0.1)] active:scale-95 whitespace-nowrap"
                     >
                       {isAiLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Auto-Fill"}
                     </button>
@@ -700,8 +727,8 @@ export function AppointmentForm({ initialData, onSuccess }: AppointmentFormProps
             )}
 
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 md:space-y-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-5">
                   <FormField
                     control={form.control}
                     name="name"
@@ -913,7 +940,7 @@ export function AppointmentForm({ initialData, onSuccess }: AppointmentFormProps
                   )}
                 />
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-5">
                   <FormField
                     control={form.control}
                     name="date"

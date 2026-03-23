@@ -191,16 +191,16 @@ export const StaffManager: React.FC = () => {
       <AnimatePresence>
         {showForm && (
           <motion.div
-            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
           >
             <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowForm(false)} />
             <motion.div
-              className="relative z-10 w-full max-w-lg rounded-3xl border border-white/10 overflow-hidden overflow-y-auto max-h-[90vh]"
+              className="relative z-10 w-full max-w-lg rounded-t-3xl sm:rounded-3xl border sm:border-t flex flex-col border-white/10 overflow-hidden overflow-y-auto max-h-[90vh]"
               style={{ background: "linear-gradient(135deg, #0f0a1e, #1a0d2e)" }}
-              initial={{ scale: 0.9, y: 20, opacity: 0 }}
+              initial={{ scale: 0.95, y: 100, opacity: 0 }}
               animate={{ scale: 1, y: 0, opacity: 1 }}
-              exit={{ scale: 0.9, y: 20, opacity: 0 }}
+              exit={{ scale: 0.95, y: 100, opacity: 0 }}
             >
               <div className="h-1" style={{ background: "linear-gradient(90deg, #c026d3, #7c3aed)" }} />
               <div className="p-7 space-y-5">

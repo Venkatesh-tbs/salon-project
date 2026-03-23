@@ -1041,10 +1041,20 @@ export function CalendarView({ appointments }: CalendarViewProps) {
             transition: transform 0.15s, opacity 0.15s !important;
             display: block !important;
           }
+
+          /* Mobile Optimizations */
+          @media (max-width: 768px) {
+            .rbc-calendar { min-width: 700px; }
+            .rbc-date-cell { padding: 2px 4px !important; font-size: 10px !important; }
+            .rbc-row-segment { padding: 1px !important; }
+            .rbc-event { border-radius: 4px !important; }
+            .rbc-toolbar button { padding: 4px 8px !important; font-size: 10px !important; }
+          }
         `}</style>
 
         {view !== Views.AGENDA ? (
-          <DnDCalendar
+          <div className="overflow-x-auto pb-4">
+            <DnDCalendar
             localizer={localizer}
             events={displayEvents}
             startAccessor="start"
@@ -1086,6 +1096,7 @@ export function CalendarView({ appointments }: CalendarViewProps) {
             tooltipAccessor={null as any}
             messages={{ showMore: (count: number) => `+${count} bookings` }}
           />
+        </div>
         ) : (
           <div>
             {/* Agenda toolbar that mirrors RBC style */}

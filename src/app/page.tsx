@@ -55,7 +55,7 @@ export default function Home() {
   ];
 
   return (
-    <div className="relative min-h-screen bg-[#07050f] text-white selection:bg-fuchsia-500/30 selection:text-white">
+    <div className="relative min-h-screen bg-[#07050f] text-white selection:bg-fuchsia-500/30 selection:text-white pb-20 md:pb-0">
       
       {/* cursor reactive glow — desktop only */}
       <div className="hidden md:block">
@@ -214,7 +214,7 @@ export default function Home() {
         {/* ── Stats Strip ── */}
         <Section>
           <div className="bg-white/[0.02] border-y border-white/[0.06] py-16 md:py-20 px-4 md:px-6">
-            <div className="max-w-7xl mx-auto grid grid-cols-2 lg:grid-cols-4 gap-8 md:gap-12 text-center">
+            <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 md:gap-12 text-center">
               {[
                 { value: "12+", label: "Years of Excellence" },
                 { value: "8K+", label: "Happy Clients" },

@@ -143,7 +143,7 @@ export function RazorpayModal({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+          className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4"
           style={{ background: 'rgba(4,4,6,0.85)', backdropFilter: 'blur(12px)' }}
           onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
         >
@@ -152,7 +152,7 @@ export function RazorpayModal({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
             transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-            className="relative w-full max-w-sm rounded-3xl border border-white/10 p-8 shadow-2xl"
+            className="relative w-full max-w-sm flex flex-col rounded-t-3xl sm:rounded-3xl border-t sm:border-y border-x-0 sm:border-x border-white/10 p-6 sm:p-8 shadow-2xl max-h-[90vh] overflow-y-auto pb-8 sm:pb-8"
             style={{
               background: 'linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02))',
               boxShadow: '0 0 80px #c026d318, inset 0 1px 0 rgba(255,255,255,0.08)',
@@ -219,7 +219,7 @@ export function RazorpayModal({
                   <button
                     onClick={handlePay}
                     disabled={loading}
-                    className="relative w-full py-4 rounded-2xl font-bold text-white overflow-hidden transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-60"
+                    className="relative w-full min-h-[48px] py-4 rounded-xl font-bold text-white overflow-hidden transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-60"
                     style={{
                       background: 'linear-gradient(135deg, #c026d3, #7c3aed)',
                       boxShadow: '0 0 30px #c026d330',
