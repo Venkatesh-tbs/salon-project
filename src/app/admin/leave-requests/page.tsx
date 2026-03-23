@@ -4,9 +4,9 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
 import { db } from '@/firebase';
-import { ref, onValue, off, update, remove, push } from 'firebase/database';
+import { ref, onValue, off, update, remove, push, set } from 'firebase/database';
 import { useToast } from '@/hooks/use-toast';
-import { CalendarMinus, CheckCircle2, XCircle, Clock, Trash2 } from 'lucide-react';
+import { CalendarMinus, CheckCircle2, XCircle, Clock, Trash2, ShieldCheck } from 'lucide-react';
 
 interface LeaveRequest {
   staffId: string;
@@ -22,7 +22,14 @@ interface LeaveRequest {
 export default function LeaveRequestsPage() {
   const [requests, setRequests] = useState<LeaveRequest[]>([]);
   const [loading, setLoading] = useState(true);
+  const [staffList, setStaffList] = useState<{ id: string; name: string }[]>([]);
   const { toast } = useToast();
+
+  // Admin direct-block form state
+  const [ab, setAb] = useState({
+    staffId: '', date: '', type: 'full' as 'full' | 'partial',
+    startTime: '09:00', endTime: '12:00', loading: false,
+  });
 
   const todayStr = new Date().toISOString().split('T')[0];
 
@@ -33,10 +40,13 @@ export default function LeaveRequestsPage() {
     const staffListener = onValue(staffRef, (snap) => {
       if (snap.exists()) {
         const m: Record<string, string> = {};
+        const list: { id: string; name: string }[] = [];
         snap.forEach((child) => {
           m[child.key!] = child.val().name || 'Unknown Staff';
+          list.push({ id: child.key!, name: child.val().name || child.key! });
         });
         staffMap = m;
+        setStaffList(list);
       }
 
       const leavesRef = ref(db, 'staffLeaves');
@@ -121,6 +131,42 @@ export default function LeaveRequestsPage() {
     }
   };
 
+  const handleAdminDirectBlock = async () => {
+    if (!ab.staffId || !ab.date) {
+      toast({ title: 'Missing Fields', description: 'Select a staff member and date.', variant: 'destructive' });
+      return;
+    }
+    if (ab.type === 'partial') {
+      const [sH, sM] = ab.startTime.split(':').map(Number);
+      const [eH, eM] = ab.endTime.split(':').map(Number);
+      if (sH * 60 + sM >= eH * 60 + eM) {
+        toast({ title: 'Invalid Range', description: 'Start time must be before end time.', variant: 'destructive' });
+        return;
+      }
+    }
+    setAb(prev => ({ ...prev, loading: true }));
+    try {
+      const payload = ab.type === 'full'
+        ? { type: 'full', status: 'approved', createdBy: 'admin', createdAt: Date.now() }
+        : { type: 'partial', startTime: ab.startTime, endTime: ab.endTime, status: 'approved', createdBy: 'admin', createdAt: Date.now() };
+      const { ref: _ref, set: _set } = await import('firebase/database');
+      await _set(_ref(db, `staffLeaves/${ab.staffId}/${ab.date}`), payload);
+      // Notify staff
+      await push(ref(db, 'notifications'), {
+        type: 'LEAVE_STATUS',
+        message: `Admin has blocked your schedule on ${ab.date} (${ab.type === 'full' ? 'Full Day' : `${ab.startTime}–${ab.endTime}`}).`,
+        staffId: ab.staffId,
+        createdAt: Date.now(),
+        read: false,
+      });
+      toast({ title: 'Leave Blocked ✅', description: `Admin leave set for ${ab.date}.` });
+      setAb(prev => ({ ...prev, staffId: '', date: '', type: 'full', loading: false }));
+    } catch (e: any) {
+      toast({ title: 'Error', description: e.message, variant: 'destructive' });
+      setAb(prev => ({ ...prev, loading: false }));
+    }
+  };
+
   if (loading) return (
     <div className="flex h-[80vh] items-center justify-center">
       <div className="w-8 h-8 rounded-full border-t-2 border-brand-purple animate-spin" />
@@ -150,6 +196,58 @@ export default function LeaveRequestsPage() {
           </div>
         </div>
         <p className="text-slate-400 mt-2 font-medium">Approve or reject staff downtime and partial shifts.</p>
+      </div>
+
+      {/* ── Admin Direct Leave Block ─────────────────────────────────────── */}
+      <div className="mb-8 p-6 rounded-2xl border border-brand-purple/30 bg-brand-purple/5 backdrop-blur-xl">
+        <div className="flex items-center gap-2 mb-4">
+          <ShieldCheck className="w-5 h-5 text-brand-purple" />
+          <h2 className="text-sm font-black uppercase tracking-widest text-brand-purple">Admin Direct Block</h2>
+          <span className="ml-auto text-xs text-white/30">Bypasses staff request — immediately blocks availability</span>
+        </div>
+        <div className="flex flex-wrap gap-3 items-end">
+          {/* Staff picker */}
+          <select
+            value={ab.staffId}
+            onChange={e => setAb(p => ({ ...p, staffId: e.target.value }))}
+            className="h-10 px-3 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-brand-purple"
+          >
+            <option value="" className="bg-[#07050f]">Select Staff</option>
+            {staffList.map(s => <option key={s.id} value={s.id} className="bg-[#07050f]">{s.name}</option>)}
+          </select>
+          {/* Date */}
+          <input
+            type="date" min={todayStr} value={ab.date}
+            onChange={e => setAb(p => ({ ...p, date: e.target.value }))}
+            className="h-10 px-3 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-brand-purple"
+          />
+          {/* Type */}
+          <select
+            value={ab.type}
+            onChange={e => setAb(p => ({ ...p, type: e.target.value as 'full' | 'partial' }))}
+            className="h-10 px-3 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-brand-purple"
+          >
+            <option value="full" className="bg-[#07050f]">Full Day</option>
+            <option value="partial" className="bg-[#07050f]">Partial</option>
+          </select>
+          {/* Time range — only for partial */}
+          {ab.type === 'partial' && (
+            <>
+              <input type="time" value={ab.startTime} onChange={e => setAb(p => ({ ...p, startTime: e.target.value }))}
+                className="h-10 px-3 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-brand-purple" />
+              <span className="text-white/40 text-sm">to</span>
+              <input type="time" value={ab.endTime} onChange={e => setAb(p => ({ ...p, endTime: e.target.value }))}
+                className="h-10 px-3 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-brand-purple" />
+            </>
+          )}
+          <button
+            disabled={ab.loading || !ab.staffId || !ab.date}
+            onClick={handleAdminDirectBlock}
+            className="h-10 px-5 rounded-xl bg-brand-purple/20 text-brand-purple border border-brand-purple/30 hover:bg-brand-purple/30 font-bold text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {ab.loading ? 'Saving…' : '🔒 Block'}
+          </button>
+        </div>
       </div>
 
       <div className="bg-white/5 border border-white/10 rounded-3xl overflow-hidden backdrop-blur-xl">

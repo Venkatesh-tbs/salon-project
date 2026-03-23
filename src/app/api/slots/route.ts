@@ -142,7 +142,20 @@ export async function GET(req: Request) {
       });
     }
 
-    return NextResponse.json({ slots });
+    // 4. Filter past slots (for today's date, hide slots that have already passed)
+    const now = new Date();
+    const filteredSlots = slots.map(slot => {
+      if (!slot.available) return slot;
+      const [sH, sM] = slot.time.split(':').map(Number);
+      const [dY, dMo, dD] = date.split('-').map(Number);
+      const slotDateTime = new Date(dY, dMo - 1, dD, sH, sM, 0, 0);
+      if (slotDateTime < now) {
+        return { ...slot, available: false };
+      }
+      return slot;
+    });
+
+    return NextResponse.json({ slots: filteredSlots });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }

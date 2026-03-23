@@ -395,6 +395,21 @@ export function AppointmentForm({ initialData, onSuccess }: AppointmentFormProps
     values: z.infer<typeof formSchema>,
     paymentId?: string
   ) => {
+    // ── CRITICAL: Block past date/time bookings ───────────────────────────────
+    if (values.date && values.time) {
+      const [bH, bM] = values.time.split(':').map(Number);
+      const [bY, bMo, bD] = values.date.split('-').map(Number);
+      const bookingDateTime = new Date(bY, bMo - 1, bD, bH, bM, 0, 0);
+      if (bookingDateTime < new Date()) {
+        toast({
+          variant: 'destructive',
+          title: 'Cannot Book Past Time',
+          description: 'The selected date and time have already passed. Please choose a future slot.',
+        });
+        return;
+      }
+    }
+
     const svcObj = services.find(s => s.name === values.service);
     const staffObj = staffList.find(s => s.staffId === values.staff);
     
