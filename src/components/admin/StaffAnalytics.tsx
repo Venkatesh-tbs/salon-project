@@ -41,11 +41,17 @@ export const StaffAnalytics: React.FC<StaffAnalyticsProps> = ({ appointments }) 
     });
 
     const staffArray = Object.values(statsMap);
+    const sortedStaff = staffArray.sort((a: StaffStats, b: StaffStats) => {
+      const rateA = a.totalBookings > 0 ? a.completedBookings / a.totalBookings : 0;
+      const rateB = b.totalBookings > 0 ? b.completedBookings / b.totalBookings : 0;
+      return rateB - rateA;
+    });
+
     let maxEff = -1;
     let minEff = 200;
     
     // Bounds check
-    staffArray.forEach(s => {
+    sortedStaff.forEach(s => {
       if (s.totalBookings > 0) {
         const eff = s.completedBookings / s.totalBookings;
         if (eff > maxEff) maxEff = eff;
@@ -53,15 +59,15 @@ export const StaffAnalytics: React.FC<StaffAnalyticsProps> = ({ appointments }) 
       }
     });
 
-    return staffArray.map(stat => {
+    return sortedStaff.map(stat => {
       let badge = "";
-      if (staffArray.length > 1 && stat.totalBookings > 0) {
+      if (sortedStaff.length > 1 && stat.totalBookings > 0) {
         const eff = stat.completedBookings / stat.totalBookings;
         if (eff === maxEff) badge = " 👑 Top Performer";
         else if (eff === minEff && eff < maxEff) badge = " ⚠️ Needs Attention";
       }
       return { ...stat, staffName: `${stat.staffName}${badge}` };
-    }).sort((a, b) => b.revenueGenerated - a.revenueGenerated);
+    });
   }, [appointments]);
 
   return (
